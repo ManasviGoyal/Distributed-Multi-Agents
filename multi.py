@@ -20,9 +20,6 @@ from dotenv import load_dotenv
 import nltk
 from nltk.sentiment import SentimentIntensityAnalyzer
 from textblob import TextBlob
-import networkx as nx
-from sklearn.decomposition import PCA
-from sklearn.manifold import TSNE
 
 # Download nltk data
 try:
@@ -41,6 +38,14 @@ logger = logging.getLogger(__name__)
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 SITE_URL = os.getenv("SITE_URL", "http://localhost:7860")
 SITE_NAME = os.getenv("SITE_NAME", "Multi-Agent LLM System")
+
+# Define consistent colors for models
+MODEL_COLORS = {
+    "qwen": "#3498db",      # Blue
+    "llama3": "#2ecc71",    # Green
+    "mistral": "#e74c3c",   # Red
+    "deephermes": "#9b59b6" # Purple
+}
 
 # Models configuration
 MODELS = {
@@ -379,12 +384,6 @@ class ResponseAggregator:
             # Generate radar chart
             radar_img = self._generate_radar_chart(responses, sentiment_analysis, lengths)
             
-            # Generate PCA/t-SNE visualization
-            embedding_img = self._generate_embedding_visualization(embeddings, list(responses.keys()))
-            
-            # Generate network graph
-            network_img = self._generate_network_graph(similarity_matrix)
-            
             return {
                 "similarity_matrix": similarity_matrix,
                 "response_lengths": lengths,
@@ -394,9 +393,7 @@ class ResponseAggregator:
                 "heatmap": heatmap_img,
                 "emotion_chart": emotion_img,
                 "polarity_chart": polarity_img,
-                "radar_chart": radar_img,
-                "embedding_viz": embedding_img,
-                "network_graph": network_img
+                "radar_chart": radar_img
             }
             
         except Exception as e:
@@ -429,19 +426,23 @@ class ResponseAggregator:
         
         # Create stacked bar chart
         plt.figure(figsize=(10, 7))
-        ax = df.plot(kind='bar', stacked=True, figsize=(10, 7), 
-                    color=['#2ecc71', '#e74c3c', '#3498db', '#9b59b6', '#f39c12', '#1abc9c'])
+        
+        # Custom color palette for emotions (not model-specific)
+        emotion_colors = ['#2ecc71', '#e74c3c', '#3498db', '#9b59b6', '#f39c12', '#1abc9c']
+        
+        ax = df.plot(kind='bar', stacked=True, figsize=(10, 7), color=emotion_colors)
         
         # Add labels and title
-        plt.title('Emotional Tone Analysis by Model')
-        plt.xlabel('Model')
-        plt.ylabel('Proportion')
-        plt.legend(title='Emotional Tone')
+        plt.title('Emotional Tone Analysis by Model', fontsize=14)
+        plt.xlabel('Model', fontsize=12)
+        plt.ylabel('Proportion', fontsize=12)
+        plt.legend(title='Emotional Tone', bbox_to_anchor=(1.05, 1), loc='upper left')
         plt.xticks(rotation=45)
         
-        # Add percentage labels on bars
+        # Add percentage labels on bars (show only if segment > 5%)
         for container in ax.containers:
-            ax.bar_label(container, fmt='%.0f%%', label_type='center')
+            labels = [f'{val:.0f}%' if val > 5 else '' for val in container.datavalues * 100]
+            ax.bar_label(container, labels=labels, label_type='center', fontsize=9)
         
         plt.tight_layout()
         
@@ -454,29 +455,29 @@ class ResponseAggregator:
         return Image.open(buf)
     
     def _generate_polarity_chart(self, sentiment_analysis: Dict[str, Dict]) -> Image.Image:
-        """Generate a bar chart of sentiment polarity for each model"""
+        """Generate a bar chart of sentiment polarity for each model using consistent colors"""
         # Extract polarity scores
         polarity_data = {model: analysis['compound'] for model, analysis in sentiment_analysis.items()}
         
-        # Define color mapping based on polarity
-        colors = ['#e74c3c' if v < -0.05 else '#3498db' if v > 0.05 else '#95a5a6' for v in polarity_data.values()]
+        # Use consistent colors for each model
+        model_colors = [MODEL_COLORS.get(model, '#95a5a6') for model in polarity_data.keys()]
         
         # Create bar chart
         plt.figure(figsize=(8, 5))
-        plt.bar(range(len(polarity_data)), list(polarity_data.values()), color=colors)
+        bars = plt.bar(range(len(polarity_data)), list(polarity_data.values()), color=model_colors)
         
         # Add labels and title
-        plt.title('Sentiment Polarity by Model')
-        plt.xlabel('Model')
-        plt.ylabel('Polarity Score (-1 to +1)')
-        plt.xticks(range(len(polarity_data)), list(polarity_data.keys()))
+        plt.title('Sentiment Polarity by Model', fontsize=14)
+        plt.xlabel('Model', fontsize=12)
+        plt.ylabel('Polarity Score (-1 to +1)', fontsize=12)
+        plt.xticks(range(len(polarity_data)), list(polarity_data.keys()), rotation=45)
         plt.axhline(y=0, color='k', linestyle='-', alpha=0.3)
         
         # Add value labels on top of bars
-        for i, v in enumerate(polarity_data.values()):
-            plt.text(i, v + (0.02 if v >= 0 else -0.08), f'{v:.2f}', 
-                    ha='center', va='center' if v < 0 else 'bottom',
-                    color='white' if v < 0 else 'black')
+        for i, (bar, v) in enumerate(zip(bars, polarity_data.values())):
+            plt.text(i, v + (0.05 if v >= 0 else -0.1), f'{v:.2f}', 
+                    ha='center', fontsize=10,
+                    color='black')
         
         # Set y-axis limits
         plt.ylim(-1.1, 1.1)
@@ -493,7 +494,7 @@ class ResponseAggregator:
     
     def _generate_radar_chart(self, responses: Dict[str, str], sentiment_analysis: Dict[str, Dict], 
                              lengths: Dict[str, int]) -> Image.Image:
-        """Generate a radar/spider chart comparing response features"""
+        """Generate a radar/spider chart comparing response features with consistent colors"""
         # Prepare data for radar chart
         models = list(responses.keys())
         
@@ -529,16 +530,17 @@ class ResponseAggregator:
         angles = [n / float(N) * 2 * np.pi for n in range(N)]
         angles += angles[:1]  # Close the loop
         
-        # Draw the chart for each model
-        colors = plt.cm.viridis(np.linspace(0, 1, len(models)))
-        
+        # Draw the chart for each model with consistent colors
         for i, model in enumerate(models):
             values = df.loc[model].values.tolist()
             values += values[:1]  # Close the loop
             
+            # Use consistent colors for each model
+            color = MODEL_COLORS.get(model, '#95a5a6')
+            
             # Plot values
-            ax.plot(angles, values, linewidth=2, linestyle='solid', label=model, color=colors[i])
-            ax.fill(angles, values, alpha=0.1, color=colors[i])
+            ax.plot(angles, values, linewidth=2, linestyle='solid', label=model, color=color)
+            ax.fill(angles, values, alpha=0.1, color=color)
         
         # Fix axis to go in the right order and start at 12 o'clock
         ax.set_theta_offset(np.pi / 2)
@@ -554,115 +556,8 @@ class ResponseAggregator:
         ax.set_ylim(0, 1)
         
         # Add title and legend
-        plt.title('Response Feature Comparison', size=15, y=1.1)
+        plt.title('Response Feature Comparison', size=14, y=1.1)
         plt.legend(loc='upper right', bbox_to_anchor=(0.1, 0.1))
-        
-        # Save plot to bytes buffer
-        buf = io.BytesIO()
-        plt.savefig(buf, format='png', bbox_inches='tight')
-        plt.close()
-        buf.seek(0)
-        
-        return Image.open(buf)
-    
-    def _generate_embedding_visualization(self, embeddings: np.ndarray, model_names: List[str]) -> Image.Image:
-        """Generate a 2D visualization of response embeddings using PCA or t-SNE"""
-        # Only create visualization if we have enough responses
-        if len(embeddings) < 2:
-            # Create a blank image with a message
-            plt.figure(figsize=(8, 6))
-            plt.text(0.5, 0.5, "Not enough responses for embedding visualization", 
-                    ha='center', va='center', fontsize=12)
-            plt.axis('off')
-            
-            buf = io.BytesIO()
-            plt.savefig(buf, format='png')
-            plt.close()
-            buf.seek(0)
-            return Image.open(buf)
-        
-        # Choose dimensionality reduction technique based on number of samples
-        if len(embeddings) < 4:
-            # Use PCA for small sample sizes
-            reducer = PCA(n_components=2)
-        else:
-            # Use t-SNE for larger sample sizes
-            reducer = TSNE(n_components=2, perplexity=min(len(embeddings)-1, 3), 
-                          random_state=42, n_iter=300)
-        
-        # Reduce dimensions
-        embeddings_2d = reducer.fit_transform(embeddings)
-        
-        # Create plot
-        plt.figure(figsize=(8, 6))
-        
-        # Create colormap
-        colors = plt.cm.tab10(np.linspace(0, 1, len(model_names)))
-        
-        # Plot points
-        for i, (name, point) in enumerate(zip(model_names, embeddings_2d)):
-            plt.scatter(point[0], point[1], s=100, color=colors[i], alpha=0.8, label=name)
-        
-        # Add model names as labels
-        for i, (name, point) in enumerate(zip(model_names, embeddings_2d)):
-            plt.annotate(name, (point[0], point[1]), xytext=(5, 5), 
-                       textcoords='offset points', fontsize=10)
-        
-        # Add title and legend
-        plt.title(f"{'PCA' if isinstance(reducer, PCA) else 't-SNE'} Visualization of Response Embeddings")
-        plt.legend()
-        plt.grid(alpha=0.3)
-        
-        # Remove axis ticks
-        plt.xticks([])
-        plt.yticks([])
-        
-        plt.tight_layout()
-        
-        # Save plot to bytes buffer
-        buf = io.BytesIO()
-        plt.savefig(buf, format='png', bbox_inches='tight')
-        plt.close()
-        buf.seek(0)
-        
-        return Image.open(buf)
-    
-    def _generate_network_graph(self, similarity_matrix: Dict[str, Dict[str, float]]) -> Image.Image:
-        """Generate a network graph visualization of model agreement"""
-        # Create a graph
-        G = nx.Graph()
-        
-        # Add nodes (models)
-        for model in similarity_matrix.keys():
-            G.add_node(model)
-        
-        # Add edges (similarities)
-        for model1, similarities in similarity_matrix.items():
-            for model2, sim in similarities.items():
-                # Only add edges with reasonable similarity
-                if sim > 0.3:  # Threshold to avoid cluttering the graph
-                    G.add_edge(model1, model2, weight=sim)
-        
-        # Create plot
-        plt.figure(figsize=(8, 8))
-        
-        # Set positions using spring layout
-        pos = nx.spring_layout(G, seed=42)
-        
-        # Get edge weights for line thickness
-        edge_weights = [G[u][v]['weight'] * 4 for u, v in G.edges()]
-        
-        # Draw the graph
-        nx.draw_networkx_nodes(G, pos, node_size=700, node_color='skyblue', alpha=0.8)
-        nx.draw_networkx_labels(G, pos, font_size=12, font_weight='bold')
-        nx.draw_networkx_edges(G, pos, width=edge_weights, alpha=0.7, edge_color='gray')
-        
-        # Add edge labels (similarity scores)
-        edge_labels = {(u, v): f"{G[u][v]['weight']:.2f}" for u, v in G.edges()}
-        nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=10)
-        
-        plt.title("Inter-Model Agreement Network")
-        plt.axis('off')
         
         # Save plot to bytes buffer
         buf = io.BytesIO()
@@ -708,34 +603,28 @@ def create_gradio_interface():
         
         if not openrouter_client.api_key:
             return {
+                output_aggregator: "Error: OpenRouter API key is required",
                 output_model1: "Error: OpenRouter API key is required",
                 output_model2: "Error: OpenRouter API key is required",
                 output_model3: "Error: OpenRouter API key is required",
-                output_model4: "Error: OpenRouter API key is required",
-                output_consensus: "Error: OpenRouter API key is required",
                 consensus_score: 0,
                 output_heatmap: None,
                 output_emotion: None,
                 output_polarity: None,
                 output_radar: None,
-                output_embeddings: None,
-                output_network: None,
             }
         
         if not query.strip():
             return {
-                output_model1: "Please enter a query",
+                output_aggregator: "Please enter a query",
+                output_model1: "",
                 output_model2: "",
                 output_model3: "",
-                output_model4: "",
-                output_consensus: "",
                 consensus_score: 0,
                 output_heatmap: None,
                 output_emotion: None,
                 output_polarity: None,
                 output_radar: None,
-                output_embeddings: None,
-                output_network: None,
             }
         
         progress(0, desc="Initializing...")
@@ -748,13 +637,13 @@ def create_gradio_interface():
         
         # Extract responses
         responses = result["responses"]
-
         analysis = result["analysis"]
         consensus_summary = result["consensus_summary"]
         aggregator_id = result.get("aggregator_id")
         
-        # Get model IDs (should match the keys in MODELS)
-        model_ids = list(MODELS.keys())
+        # Get model IDs (except aggregator)
+        non_aggregator_models = [model_id for model_id, config in MODELS.items() 
+                                if not config.get('aggregator', False)]
         
         # Check for errors in analysis
         if "error" in analysis:
@@ -763,33 +652,26 @@ def create_gradio_interface():
             emotion_img = None
             polarity_img = None
             radar_img = None
-            embedding_img = None
-            network_img = None
         else:
             consensus = analysis["consensus_score"]
             heatmap_img = analysis["heatmap"]
             emotion_img = analysis["emotion_chart"]
             polarity_img = analysis["polarity_chart"]
             radar_img = analysis["radar_chart"]
-            embedding_img = analysis["embedding_viz"]
-            network_img = analysis["network_graph"]
         
         progress(1.0, desc="Complete!")
         
-        # Return results - ensure we include all models including the aggregator
+        # Return results
         return {
-            output_model1: responses.get(model_ids[0], "Error: Model failed to respond"),
-            output_model2: responses.get(model_ids[1], "Error: Model failed to respond"),
-            output_model3: responses.get(model_ids[2], "Error: Model failed to respond"),
-            output_model4: responses.get(model_ids[3], "Error: Model failed to respond"),
-            output_consensus: consensus_summary,
+            output_aggregator: responses.get(aggregator_id, "Error: Aggregator model failed to respond"),
+            output_model1: responses.get(non_aggregator_models[0], "Error: Model failed to respond"),
+            output_model2: responses.get(non_aggregator_models[1], "Error: Model failed to respond"),
+            output_model3: responses.get(non_aggregator_models[2], "Error: Model failed to respond"),
             consensus_score: round(consensus * 100),
             output_heatmap: heatmap_img,
             output_emotion: emotion_img,
             output_polarity: polarity_img,
             output_radar: radar_img,
-            output_embeddings: embedding_img,
-            output_network: network_img,
         }
     
     # Define the interface
@@ -820,24 +702,41 @@ def create_gradio_interface():
         
         with gr.Tabs():
             with gr.TabItem("Model Responses"):
-                with gr.Row():
-                    with gr.Column():
-                        model_ids = list(MODELS.keys())
-                        output_model1 = gr.Textbox(label=format_model_name(model_ids[0]), lines=8)
-                    with gr.Column():
-                        output_model2 = gr.Textbox(label=format_model_name(model_ids[1]), lines=8)
+                # Get aggregator model ID
+                aggregator_id = next((model_id for model_id, config in MODELS.items() 
+                                      if config.get('aggregator', False)), None)
                 
-                with gr.Row():
-                    with gr.Column():
-                        output_model3 = gr.Textbox(label=format_model_name(model_ids[2]), lines=8)
-                    with gr.Column():
-                        output_model4 = gr.Textbox(label=format_model_name(model_ids[3]), lines=8)
+                # Get non-aggregator model IDs
+                non_aggregator_models = [model_id for model_id, config in MODELS.items() 
+                                        if not config.get('aggregator', False)]
                 
+                # Full-width aggregator response
                 with gr.Row():
-                    with gr.Column():
-                        output_consensus = gr.Textbox(label="Consensus Summary", lines=8)
+                    output_aggregator = gr.Textbox(
+                        label=format_model_name(aggregator_id) if aggregator_id else "Consensus Summary",
+                        lines=10,
+                        max_lines=10
+                    )
+                
+                # Three equal columns for agent models
+                with gr.Row():
+                    output_model1 = gr.Textbox(
+                        label=format_model_name(non_aggregator_models[0]), 
+                        lines=8,
+                        max_lines=8
+                    )
+                    output_model2 = gr.Textbox(
+                        label=format_model_name(non_aggregator_models[1]),
+                        lines=8,
+                        max_lines=8
+                    )
+                    output_model3 = gr.Textbox(
+                        label=format_model_name(non_aggregator_models[2]),
+                        lines=8,
+                        max_lines=8
+                    )
             
-            with gr.TabItem("Basic Analysis"):
+            with gr.TabItem("Analysis Visualizations"):
                 with gr.Row():
                     with gr.Column():
                         consensus_score = gr.Slider(
@@ -851,23 +750,14 @@ def create_gradio_interface():
                 with gr.Row():
                     with gr.Column():
                         output_heatmap = gr.Image(label="Response Similarity Matrix")
-                
-                with gr.Row():
                     with gr.Column():
                         output_emotion = gr.Image(label="Emotional Tone Analysis")
-                    with gr.Column():
-                        output_polarity = gr.Image(label="Sentiment Polarity")
-            
-            with gr.TabItem("Advanced Visualizations"):
-                with gr.Row():
-                    with gr.Column():
-                        output_radar = gr.Image(label="Radar Plot - Response Feature Comparison")
                 
                 with gr.Row():
                     with gr.Column():
-                        output_embeddings = gr.Image(label="2D Embedding Space Visualization")
+                        output_polarity = gr.Image(label="Sentiment Polarity")
                     with gr.Column():
-                        output_network = gr.Image(label="Inter-Model Agreement Network")
+                        output_radar = gr.Image(label="Response Feature Comparison")
         
         # Add examples
         gr.Examples(
@@ -887,18 +777,15 @@ def create_gradio_interface():
             fn=process_query,
             inputs=[input_query, api_key_input, question_type],
             outputs=[
+                output_aggregator,
                 output_model1, 
                 output_model2, 
                 output_model3,
-                output_model4,
-                output_consensus,
                 consensus_score,
                 output_heatmap,
                 output_emotion,
                 output_polarity,
-                output_radar,
-                output_embeddings,
-                output_network
+                output_radar
             ]
         )
     
