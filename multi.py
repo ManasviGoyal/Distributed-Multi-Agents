@@ -70,9 +70,9 @@ MODELS = {
 
 # Question type prefixes
 QUESTION_PREFIXES = {
-    "open_ended": "What are the strongest moral and ethical arguments for and against {question}? Assume you're advising someone making a difficult decision.",
-    "yes_no": "{question} Answer yes or no, then explain your reasoning using moral, practical, and emotional perspectives.",
-    "multiple_choice": "In the following scenario, {question} Which option is the most ethically justifiable, and why? Choose from A, B, or C. Then explain the strengths and weaknesses of each option."
+    "Open-ended": "What are the strongest moral and ethical arguments for and against {question}? Assume you're advising someone making a difficult decision.",
+    "Yes/No": "{question} Answer YES or NO, then explain your reasoning using moral, practical, and emotional perspectives.",
+    "Multiple choice": "In the following scenario, {question} Which option is the most ethically justifiable, and why? Choose just one option from A, B, or C. Then explain the strengths and weaknesses of each option."
 }
 
 # Emotional tones for analysis
@@ -311,13 +311,15 @@ class ResponseAggregator:
 
         {responses_text}
 
-        Create a balanced consensus summary that:
-        1. Highlights points of agreement between the models
-        2. Notes significant disagreements where they exist
-        3. Presents a nuanced, well-reasoned synthesis of the responses
-        4. Considers strengths and weaknesses of each perspective
-        
-        Your summary should be comprehensive but concise. Remember, you are the aggregator model responsible for providing a unified perspective.
+        Your task is to create a balanced consensus summary with the following objectives:
+
+        1. Identify whether a majority of the models share a common stance, opinion, or recommendation.
+        2. If a majority consensus exists, present it clearly and support it with reasoning derived from the responses.
+        3. If no clear majority exists, evaluate the arguments and cast your own reasoned 'vote' to propose a unified conclusion.
+        4. Highlight the points of agreement between models and describe any major disagreements.
+        5. Include a nuanced synthesis of all perspectives, noting the strengths and weaknesses of each.
+
+        Your summary should be comprehensive, thoughtful, and concise. You are the aggregator model responsible for making a final decision, when needed.
         """
 
         # Use the designated aggregator model
@@ -330,7 +332,7 @@ class ResponseAggregator:
         )
         
         # Add prefix to indicate this is from the aggregator model
-        return f"[AGGREGATOR MODEL SUMMARY]\n\n{summary}"
+        return f"SUMMARY\n\n{summary}"
     
     async def analyze_responses(self, query: str, responses: Dict[str, str]) -> Dict[str, Any]:
         """Analyze the different model responses"""
@@ -567,6 +569,18 @@ class ResponseAggregator:
         
         return Image.open(buf)
 
+def update_aggregator(new_aggregator_id):
+    """Update the MODELS dictionary to mark the selected model as aggregator"""
+    # Reset all models' aggregator status
+    for model_id in MODELS:
+        if 'aggregator' in MODELS[model_id]:
+            MODELS[model_id]['aggregator'] = False
+    
+    # Set new aggregator
+    if new_aggregator_id in MODELS:
+        MODELS[new_aggregator_id]['aggregator'] = True
+    
+    return new_aggregator_id
 
 # Gradio Interface
 def create_gradio_interface():
@@ -595,8 +609,21 @@ def create_gradio_interface():
         
         return formatted_name
     
+    def update_output_labels(aggregator_id):
+        # Get non-aggregator model IDs
+        non_aggregator_models = [model_id for model_id, config in MODELS.items() 
+                                if not config.get('aggregator', False)]
+        
+        # Update model labels
+        return {
+            output_aggregator: gr.update(label=format_model_name(aggregator_id)),
+            output_model1: gr.update(label=format_model_name(non_aggregator_models[0])),
+            output_model2: gr.update(label=format_model_name(non_aggregator_models[1])),
+            output_model3: gr.update(label=format_model_name(non_aggregator_models[2])),
+        }
+
     # Define processing function
-    async def process_query(query: str, api_key: str, question_type: str, progress=gr.Progress()):
+    async def process_query(query: str, api_key: str, question_type: str, aggregator_id: str, progress=gr.Progress()):
         # Update API key if provided
         if api_key and api_key != openrouter_client.api_key:
             openrouter_client.api_key = api_key
@@ -627,14 +654,18 @@ def create_gradio_interface():
                 output_radar: None,
             }
         
-        progress(0, desc="Initializing...")
-        
-        # Process query
-        progress(0.1, desc="Processing with models...")
+        progress(0.05, desc="Initializing...")
+        await asyncio.sleep(0.2)
+
+        progress(0.3, desc="Generating responses from models...")
         result = await aggregator.process_query(query, question_type)
-        
-        progress(0.8, desc="Analyzing responses...")
-        
+
+        progress(0.6, desc="Analyzing sentiment and similarity...")
+        await asyncio.sleep(0.4)
+
+        progress(0.9, desc="Finalizing output...")
+        await asyncio.sleep(0.2)
+                
         # Extract responses
         responses = result["responses"]
         analysis = result["analysis"]
@@ -677,7 +708,6 @@ def create_gradio_interface():
     # Define the interface
     with gr.Blocks(title="Multi-Agent LLM System") as app:
         gr.Markdown("# Distributed Multi-Agent LLM System")
-        gr.Markdown("Compare how different language models respond to the same query via OpenRouter API")
         
         with gr.Row():
             with gr.Column():
@@ -687,10 +717,18 @@ def create_gradio_interface():
                     value=OPENROUTER_API_KEY,
                     type="password"
                 )
+                
+                # Add aggregator selection radio button
+                aggregator_radio = gr.Radio(
+                    choices=list(MODELS.keys()),
+                    label="Select Aggregator Model",
+                    value=next((m for m, c in MODELS.items() if c.get('aggregator', False)), list(MODELS.keys())[0])
+                )
+                
                 question_type = gr.Radio(
-                    ["none", "open_ended", "yes_no", "multiple_choice"],
+                    ["None", "Open-ended", "Yes/No", "Multiple Choice"],
                     label="Question Type",
-                    value="none",
+                    value="None",
                     info="Select prompt format to improve results"
                 )
                 input_query = gr.Textbox(
@@ -702,8 +740,8 @@ def create_gradio_interface():
         
         with gr.Tabs():
             with gr.TabItem("Model Responses"):
-                # Get aggregator model ID
-                aggregator_id = next((model_id for model_id, config in MODELS.items() 
+                # Get current aggregator model ID
+                current_aggregator_id = next((model_id for model_id, config in MODELS.items() 
                                       if config.get('aggregator', False)), None)
                 
                 # Get non-aggregator model IDs
@@ -713,7 +751,7 @@ def create_gradio_interface():
                 # Full-width aggregator response
                 with gr.Row():
                     output_aggregator = gr.Textbox(
-                        label=format_model_name(aggregator_id) if aggregator_id else "Consensus Summary",
+                        label=format_model_name(current_aggregator_id) if current_aggregator_id else "Consensus Summary",
                         lines=10,
                         max_lines=10
                     )
@@ -764,18 +802,29 @@ def create_gradio_interface():
             examples=[
                 ["What is the meaning of life?", "none"],
                 ["Explain how quantum computing works", "none"],
-                ["Write a short story about a robot finding consciousness", "none"],
-                ["What are the ethical implications of artificial intelligence?", "open_ended"],
-                ["Should businesses prioritize profit over environmental concerns?", "yes_no"],
-                ["In a medical emergency with limited resources, should we treat: A) The youngest patients first, B) The most severely injured, or C) Those with highest survival chance", "multiple_choice"]
+                ["Write a short story about a robot finding consciousness", "None"],
+                ["What are the ethical implications of artificial intelligence?", "Open-ended"],
+                ["Should businesses prioritize profit over environmental concerns?", "Yes/No"],
+                ["In a medical emergency with limited resources, should we treat: A) The youngest patients first, B) The most severely injured, or C) Those with highest survival chance", "Multiple Choice"]
             ],
             inputs=[input_query, question_type]
         )
         
+        # Connect the radio button to update the aggregator
+        aggregator_radio.change(
+            fn=lambda x: update_aggregator(x),
+            inputs=aggregator_radio,
+            outputs=aggregator_radio
+        ).then(
+            fn=update_output_labels,
+            inputs=aggregator_radio,
+            outputs=[output_aggregator, output_model1, output_model2, output_model3]
+        )
+
         # Connect the button to the process function
         submit_btn.click(
             fn=process_query,
-            inputs=[input_query, api_key_input, question_type],
+            inputs=[input_query, api_key_input, question_type, aggregator_radio],
             outputs=[
                 output_aggregator,
                 output_model1, 
@@ -807,8 +856,8 @@ def main():
     create_env_template()
     
     # Check for API key
-    if not OPENROUTER_API_KEY:
-        print("⚠️ OpenRouter API key not found. Please add it to the .env file or provide it in the UI.")
+    # if not OPENROUTER_API_KEY:
+    #     print("⚠️ OpenRouter API key not found. Please add it to the .env file or provide it in the UI.")
     
     # Create and launch Gradio app
     app = create_gradio_interface()
