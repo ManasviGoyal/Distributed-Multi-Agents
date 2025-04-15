@@ -704,16 +704,19 @@ def create_gradio_interface():
             output_polarity: polarity_img,
             output_radar: radar_img,
         }
-    
+
     # Define the interface
     with gr.Blocks(title="Multi-Agent LLM System") as app:
-        gr.Markdown("# Distributed Multi-Agent LLM System")
+        gr.Markdown(
+            "<h1 style='text-align: center;'>Distributed Multi-Agent LLM System</h1>",
+            elem_id="title"
+        )
         
         with gr.Row():
             with gr.Column():
                 api_key_input = gr.Textbox(
                     label="OpenRouter API Key",
-                    placeholder="Enter your OpenRouter API key...",
+                    placeholder="Enter your OpenRouter API key",
                     value=OPENROUTER_API_KEY,
                     type="password"
                 )
@@ -729,11 +732,10 @@ def create_gradio_interface():
                     ["None", "Open-ended", "Yes/No", "Multiple Choice"],
                     label="Question Type",
                     value="None",
-                    info="Select prompt format to improve results"
                 )
                 input_query = gr.Textbox(
                     label="Your Query",
-                    placeholder="Enter your question or prompt...",
+                    placeholder="Enter your question or prompt",
                     lines=3
                 )
                 submit_btn = gr.Button("Submit", variant="primary")
@@ -800,8 +802,8 @@ def create_gradio_interface():
         # Add examples
         gr.Examples(
             examples=[
-                ["What is the meaning of life?", "none"],
-                ["Explain how quantum computing works", "none"],
+                ["What is the meaning of life?", "None"],
+                ["Explain how quantum computing works", "None"],
                 ["Write a short story about a robot finding consciousness", "None"],
                 ["What are the ethical implications of artificial intelligence?", "Open-ended"],
                 ["Should businesses prioritize profit over environmental concerns?", "Yes/No"],
