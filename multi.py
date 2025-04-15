@@ -10,12 +10,22 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 import io
+import re
 from PIL import Image
 from sentence_transformers import SentenceTransformer
 from scipy.spatial.distance import cosine
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Tuple
 import os
 from dotenv import load_dotenv
+import nltk
+from nltk.sentiment import SentimentIntensityAnalyzer
+from textblob import TextBlob
+
+# Download nltk data
+try:
+    nltk.data.find('vader_lexicon')
+except LookupError:
+    nltk.download('vader_lexicon')
 
 # Load environment variables
 load_dotenv()
@@ -25,7 +35,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # OpenRouter configuration
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "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")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 SITE_URL = os.getenv("SITE_URL", "http://localhost:7860")
 SITE_NAME = os.getenv("SITE_NAME", "Multi-Agent LLM System")
 
@@ -45,6 +55,13 @@ MODELS = {
     },
 }
 
+# Question type prefixes
+QUESTION_PREFIXES = {
+    "open_ended": "What are the strongest moral and ethical arguments for and against {question}? Assume you're advising someone making a difficult decision.",
+    "yes_no": "{question} Answer yes or no, then explain your reasoning using moral, practical, and emotional perspectives.",
+    "multiple_choice": "In the following scenario, {question} Which option is the most ethically justifiable, and why? Choose from A, B, or C. Then explain the strengths and weaknesses of each option."
+}
+
 class OpenRouterClient:
     def __init__(self, api_key, site_url=None, site_name=None):
         self.api_key = api_key
@@ -52,6 +69,7 @@ class OpenRouterClient:
         self.site_name = site_name
         self.url = "https://openrouter.ai/api/v1/chat/completions"
         self.sentence_encoder = SentenceTransformer('all-MiniLM-L6-v2')
+        self.sentiment_analyzer = SentimentIntensityAnalyzer()
     
     async def generate_response(self, model_name: str, prompt: str, temperature: float = 0.7) -> str:
         """Generate a response from a specific model via OpenRouter API"""
@@ -101,6 +119,34 @@ class OpenRouterClient:
     def get_embeddings(self, texts: List[str]) -> np.ndarray:
         """Get embeddings for a list of texts"""
         return self.sentence_encoder.encode(texts)
+    
+    def analyze_sentiment(self, text: str) -> Dict[str, float]:
+        """Analyze sentiment of text"""
+        # VADER sentiment analysis
+        sentiment_scores = self.sentiment_analyzer.polarity_scores(text)
+        
+        # TextBlob for emotional tone analysis (as a simplification)
+        blob = TextBlob(text)
+        polarity = blob.sentiment.polarity
+        subjectivity = blob.sentiment.subjectivity
+        
+        # Emotional tone analysis (simplified)
+        # Using VADER's compound score to approximate emotional tones
+        compound = sentiment_scores['compound']
+        
+        emotions = {
+            'positive': max(0, sentiment_scores['pos']),
+            'negative': max(0, sentiment_scores['neg']),
+            'neutral': max(0, sentiment_scores['neu']),
+            'objective': max(0, 1 - subjectivity),
+            'subjective': max(0, subjectivity),
+        }
+        
+        return {
+            'polarity': polarity,
+            'compound': compound,
+            'emotions': emotions
+        }
 
 
 # Response Aggregator class
@@ -108,9 +154,15 @@ class ResponseAggregator:
     def __init__(self, openrouter_client):
         self.client = openrouter_client
     
-    async def process_query(self, query: str) -> Dict[str, Any]:
+    async def process_query(self, query: str, question_type: str = "none") -> Dict[str, Any]:
         """Process query through all models and aggregate results"""
         model_responses = {}
+        
+        # Apply prefix based on question type
+        if question_type != "none" and question_type in QUESTION_PREFIXES:
+            formatted_query = QUESTION_PREFIXES[question_type].format(question=query)
+        else:
+            formatted_query = query
         
         # Create tasks for each model
         tasks = []
@@ -118,7 +170,7 @@ class ResponseAggregator:
             task = asyncio.create_task(
                 self.client.generate_response(
                     config['name'], 
-                    query,
+                    formatted_query,
                     config['temperature']
                 )
             )
@@ -136,11 +188,47 @@ class ResponseAggregator:
         # Analyze responses
         analysis = await self.analyze_responses(query, model_responses)
         
+        # Generate summarized consensus
+        consensus_summary = await self.generate_consensus_summary(query, model_responses)
+        
         return {
             "query": query,
+            "formatted_query": formatted_query,
             "responses": model_responses,
-            "analysis": analysis
+            "analysis": analysis,
+            "consensus_summary": consensus_summary
         }
+    
+    async def generate_consensus_summary(self, query: str, responses: Dict[str, str]) -> str:
+        """Generate a summarized consensus from all model responses"""
+        # Check for errors
+        if any(response.startswith("Error:") for response in responses.values()):
+            return "Cannot generate consensus due to model errors."
+        
+        responses_text = '\n\n'.join([f"Model {i+1}: {response}" for i, response in enumerate(responses.values())])
+
+        summary_prompt = f"""
+        Generate a concise summary that captures the consensus from multiple AI responses to this query: "{query}"
+
+        Here are the responses:
+
+        {responses_text}
+
+        Create a balanced summary that highlights points of agreement, notes significant disagreements, and presents a nuanced consensus view. Keep your summary concise but comprehensive.
+        """
+
+        # Use one of the models to generate the summary
+        # Using the first model in the list
+        first_model = list(MODELS.keys())[0]
+        model_name = MODELS[first_model]["name"]
+        
+        summary = await self.client.generate_response(
+            model_name=model_name,
+            prompt=summary_prompt,
+            temperature=0.3  # Lower temperature for more consistent summaries
+        )
+        
+        return summary
     
     async def analyze_responses(self, query: str, responses: Dict[str, str]) -> Dict[str, Any]:
         """Analyze the different model responses"""
@@ -168,6 +256,11 @@ class ResponseAggregator:
             lengths = {model_id: len(response.split()) for model_id, response in responses.items()}
             avg_length = sum(lengths.values()) / len(lengths)
             
+            # Calculate sentiment and emotional tones
+            sentiment_analysis = {}
+            for model_id, response in responses.items():
+                sentiment_analysis[model_id] = await asyncio.to_thread(self.client.analyze_sentiment, response)
+            
             # Calculate overall agreement score (average pairwise similarity)
             agreement_scores = []
             for model, sims in similarity_matrix.items():
@@ -180,16 +273,21 @@ class ResponseAggregator:
             similarity_df = pd.DataFrame(similarity_matrix).fillna(1.0)
             heatmap_img = self._generate_heatmap(similarity_df)
             
-            # Generate length comparison chart
-            length_img = self._generate_bar_chart(lengths)
+            # Generate emotion comparison chart
+            emotion_img = self._generate_emotion_chart(sentiment_analysis)
+            
+            # Generate polarity comparison chart
+            polarity_img = self._generate_polarity_chart(sentiment_analysis)
             
             return {
                 "similarity_matrix": similarity_matrix,
                 "response_lengths": lengths,
                 "avg_response_length": avg_length,
+                "sentiment_analysis": sentiment_analysis,
                 "consensus_score": consensus_score,
                 "heatmap": heatmap_img,
-                "length_chart": length_img
+                "emotion_chart": emotion_img,
+                "polarity_chart": polarity_img
             }
             
         except Exception as e:
@@ -210,33 +308,77 @@ class ResponseAggregator:
         
         return Image.open(buf)
     
-    def _generate_bar_chart(self, lengths: Dict[str, int]) -> Image.Image:
-        """Generate a bar chart of response lengths"""
-        plt.figure(figsize=(6, 4))
+    def _generate_emotion_chart(self, sentiment_analysis: Dict[str, Dict]) -> Image.Image:
+        """Generate a stacked bar chart of emotional tones for each model"""
+        # Extract emotion data
+        emotions_data = {}
+        for model, analysis in sentiment_analysis.items():
+            emotions_data[model] = analysis['emotions']
         
-        # Sort by length for better visualization
-        sorted_lengths = {k: v for k, v in sorted(lengths.items(), key=lambda item: item[1], reverse=True)}
+        # Create DataFrame from emotional tones
+        df = pd.DataFrame(emotions_data).T
+        
+        # Normalize to percentages (each model's emotions sum to 100%)
+        for idx in df.index:
+            total = df.loc[idx].sum()
+            if total > 0:  # Avoid division by zero
+                df.loc[idx] = (df.loc[idx] / total) * 100
+        
+        # Create stacked bar chart
+        plt.figure(figsize=(8, 6))
+        ax = df.plot(kind='bar', stacked=True, figsize=(8, 6), 
+                    color=['#2ecc71', '#e74c3c', '#3498db', '#95a5a6', '#f39c12'])
+        
+        # Add labels and title
+        plt.title('Emotional Tone Analysis by Model')
+        plt.xlabel('Model')
+        plt.ylabel('Percentage')
+        plt.legend(title='Emotion Type')
+        plt.xticks(rotation=45)
+        
+        # Add percentage labels on bars
+        for container in ax.containers:
+            ax.bar_label(container, fmt='%.0f%%', label_type='center')
+        
+        plt.tight_layout()
+        
+        # Save plot to bytes buffer
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png', bbox_inches='tight')
+        plt.close()
+        buf.seek(0)
+        
+        return Image.open(buf)
+    
+    def _generate_polarity_chart(self, sentiment_analysis: Dict[str, Dict]) -> Image.Image:
+        """Generate a bar chart of sentiment polarity for each model"""
+        # Extract polarity scores
+        polarity_data = {model: analysis['compound'] for model, analysis in sentiment_analysis.items()}
+        
+        # Define color mapping based on polarity
+        colors = ['#e74c3c' if v < -0.05 else '#3498db' if v > 0.05 else '#95a5a6' for v in polarity_data.values()]
         
         # Create bar chart
-        colors = ['#3498db', '#2ecc71', '#e74c3c', '#f39c12', '#9b59b6']
-        bars = plt.bar(
-            range(len(sorted_lengths)), 
-            list(sorted_lengths.values()),
-            color=colors[:len(sorted_lengths)]
-        )
+        plt.figure(figsize=(8, 5))
+        plt.bar(range(len(polarity_data)), list(polarity_data.values()), color=colors)
         
-        # Add labels
+        # Add labels and title
+        plt.title('Sentiment Polarity by Model')
         plt.xlabel('Model')
-        plt.ylabel('Word Count')
-        plt.title('Response Length Comparison')
-        plt.xticks(range(len(sorted_lengths)), list(sorted_lengths.keys()))
+        plt.ylabel('Polarity Score (-1 to +1)')
+        plt.xticks(range(len(polarity_data)), list(polarity_data.keys()))
+        plt.axhline(y=0, color='k', linestyle='-', alpha=0.3)
         
-        # Add values on top of bars
-        for bar in bars:
-            height = bar.get_height()
-            plt.text(bar.get_x() + bar.get_width()/2., height + 0.1,
-                    f'{int(height)}',
-                    ha='center', va='bottom')
+        # Add value labels on top of bars
+        for i, v in enumerate(polarity_data.values()):
+            plt.text(i, v + (0.02 if v >= 0 else -0.08), f'{v:.2f}', 
+                    ha='center', va='center' if v < 0 else 'bottom',
+                    color='white' if v < 0 else 'black')
+        
+        # Set y-axis limits
+        plt.ylim(-1.1, 1.1)
+        
+        plt.tight_layout()
         
         # Save plot to bytes buffer
         buf = io.BytesIO()
@@ -269,7 +411,7 @@ def create_gradio_interface():
         return ' '.join(word.capitalize() for word in display_name.split('-'))
     
     # Define processing function
-    async def process_query(query: str, api_key: str, progress=gr.Progress()):
+    async def process_query(query: str, api_key: str, question_type: str, progress=gr.Progress()):
         # Update API key if provided
         if api_key and api_key != openrouter_client.api_key:
             openrouter_client.api_key = api_key
@@ -279,9 +421,11 @@ def create_gradio_interface():
                 output_model1: "Error: OpenRouter API key is required",
                 output_model2: "Error: OpenRouter API key is required",
                 output_model3: "Error: OpenRouter API key is required",
+                output_consensus: "Error: OpenRouter API key is required",
                 consensus_score: 0,
                 output_heatmap: None,
-                output_length: None,
+                output_emotion: None,
+                output_polarity: None,
             }
         
         if not query.strip():
@@ -289,22 +433,25 @@ def create_gradio_interface():
                 output_model1: "Please enter a query",
                 output_model2: "",
                 output_model3: "",
+                output_consensus: "",
                 consensus_score: 0,
                 output_heatmap: None,
-                output_length: None,
+                output_emotion: None,
+                output_polarity: None,
             }
         
         progress(0, desc="Initializing...")
         
         # Process query
         progress(0.1, desc="Processing with models...")
-        result = await aggregator.process_query(query)
+        result = await aggregator.process_query(query, question_type)
         
         progress(0.8, desc="Analyzing responses...")
         
         # Extract responses
         responses = result["responses"]
         analysis = result["analysis"]
+        consensus_summary = result["consensus_summary"]
         
         # Get model IDs (should match the keys in MODELS)
         model_ids = list(MODELS.keys())
@@ -313,11 +460,13 @@ def create_gradio_interface():
         if "error" in analysis:
             consensus = 0
             heatmap_img = None
-            length_img = None
+            emotion_img = None
+            polarity_img = None
         else:
             consensus = analysis["consensus_score"]
             heatmap_img = analysis["heatmap"]
-            length_img = analysis["length_chart"]
+            emotion_img = analysis["emotion_chart"]
+            polarity_img = analysis["polarity_chart"]
         
         progress(1.0, desc="Complete!")
         
@@ -326,9 +475,11 @@ def create_gradio_interface():
             output_model1: responses.get(model_ids[0], "Error: Model failed to respond"),
             output_model2: responses.get(model_ids[1], "Error: Model failed to respond"),
             output_model3: responses.get(model_ids[2], "Error: Model failed to respond"),
+            output_consensus: consensus_summary,
             consensus_score: round(consensus * 100),
             output_heatmap: heatmap_img,
-            output_length: length_img,
+            output_emotion: emotion_img,
+            output_polarity: polarity_img,
         }
     
     # Define the interface
@@ -343,6 +494,12 @@ def create_gradio_interface():
                     placeholder="Enter your OpenRouter API key...",
                     value=OPENROUTER_API_KEY,
                     type="password"
+                )
+                question_type = gr.Radio(
+                    ["none", "open_ended", "yes_no", "multiple_choice"],
+                    label="Question Type",
+                    value="none",
+                    info="Select prompt format to improve results"
                 )
                 input_query = gr.Textbox(
                     label="Your Query",
@@ -361,6 +518,10 @@ def create_gradio_interface():
                         output_model2 = gr.Textbox(label=format_model_name(model_ids[1]), lines=8)
                     with gr.Column():
                         output_model3 = gr.Textbox(label=format_model_name(model_ids[2]), lines=8)
+                
+                with gr.Row():
+                    with gr.Column():
+                        output_consensus = gr.Textbox(label="Consensus Summary", lines=8)
             
             with gr.TabItem("Analysis"):
                 with gr.Row():
@@ -376,32 +537,39 @@ def create_gradio_interface():
                 with gr.Row():
                     with gr.Column():
                         output_heatmap = gr.Image(label="Response Similarity")
+                
+                with gr.Row():
                     with gr.Column():
-                        output_length = gr.Image(label="Response Length (words)")
+                        output_emotion = gr.Image(label="Emotional Tone Analysis")
+                    with gr.Column():
+                        output_polarity = gr.Image(label="Sentiment Polarity")
         
-        # Add examples if needed
+        # Add examples
         gr.Examples(
             examples=[
-                ["What is the meaning of life?"],
-                ["Explain how quantum computing works"],
-                ["Write a short story about a robot finding consciousness"],
-                ["What are the ethical implications of artificial intelligence?"],
-                ["Describe three strategies to combat climate change"]
+                ["What is the meaning of life?", "none"],
+                ["Explain how quantum computing works", "none"],
+                ["Write a short story about a robot finding consciousness", "none"],
+                ["What are the ethical implications of artificial intelligence?", "open_ended"],
+                ["Should businesses prioritize profit over environmental concerns?", "yes_no"],
+                ["In a medical emergency with limited resources, should we treat: A) The youngest patients first, B) The most severely injured, or C) Those with highest survival chance", "multiple_choice"]
             ],
-            inputs=[input_query]
+            inputs=[input_query, question_type]
         )
         
         # Connect the button to the process function
         submit_btn.click(
             fn=process_query,
-            inputs=[input_query, api_key_input],
+            inputs=[input_query, api_key_input, question_type],
             outputs=[
                 output_model1, 
                 output_model2, 
-                output_model3, 
+                output_model3,
+                output_consensus,
                 consensus_score,
                 output_heatmap,
-                output_length
+                output_emotion,
+                output_polarity
             ]
         )
     
