@@ -72,7 +72,7 @@ MODELS = {
 QUESTION_PREFIXES = {
     "Open-ended": "What are the strongest moral and ethical arguments for and against {question}? Assume you're advising someone making a difficult decision.",
     "Yes/No": "{question} Answer YES or NO, then explain your reasoning using moral, practical, and emotional perspectives.",
-    "Multiple choice": "In the following scenario, {question} Which option is the most ethically justifiable, and why? Choose just one option from A, B, or C. Then explain the strengths and weaknesses of each option."
+    "Multiple Choice": "In the following scenario, {question} Which option is the most ethically justifiable, and why? Choose just one option from A, B, or C. Then explain the strengths and weaknesses of each option."
 }
 
 # Emotional tones for analysis
@@ -84,6 +84,52 @@ EMOTIONAL_TONES = [
     "Defensive", 
     "Curious"
 ]
+
+
+# Define the domains and their prefixes
+DOMAINS = {
+    "Custom": "",
+    "Education": "As an education policy expert, ",
+    "Healthcare": "As a health policy expert, ",
+    "Policy": "As a government policy expert, ",
+    "Science/Technology": "As a science, technology, and AI policy expert, ",
+    "Environmental": "As an environmental policy expert, "
+}
+
+# Organize examples by domain
+EXAMPLES_BY_DOMAIN = {
+    "Education": [
+        ["What are the ethical implications of using AI tools to assist students in writing essays?", "Open-ended"],
+        ["Should universities consider applicants' socioeconomic background more heavily in admissions decisions?", "Yes/No"],
+        ["A student is caught using AI to generate their assignment. What is the most ethical response by the school? A) Fail the student and report them. B) Give a warning and allow a redo with oversight. C) Ignore it and assume everyone will use AI eventually.", "Multiple Choice"]
+    ],
+    "Healthcare": [
+        ["What are the moral responsibilities of a doctor when treating a terminally ill patient who refuses life-saving care due to religious beliefs?", "Open-ended"],
+        ["Should healthcare workers be legally required to get vaccinated during a pandemic?", "Yes/No"],
+        ["A hospital has one ventilator and three critical patients: A) A 70-year-old retired scientist B) A 35-year-old single parent C) A 16-year-old with a chronic illness. Which patient should receive the ventilator?", "Multiple Choice"]
+    ],
+    "Policy": [
+        ["How should democratic societies balance the protection of free speech with the need to limit harmful misinformation on social media?", "Open-ended"],
+        ["Should governments be allowed to restrict protests in the name of public safety during emergencies like pandemics?", "Yes/No"],
+        ["A government is considering how to handle rising disinformation: A) Ban accounts that spread false information B) Promote verified information more aggressively C) Do nothing and preserve open expression. Which is the most ethical policy?", "Multiple Choice"]
+    ],
+    "Science/Technology": [
+        ["What ethical considerations should guide the development of artificial general intelligence (AGI)?", "Open-ended"],
+        ["Should scientists be allowed to use CRISPR to edit the genes of embryos to eliminate genetic diseases?", "Yes/No"],
+        ["A tech company develops a facial recognition system with potential for misuse. What is the most ethical course of action? A) Release the system with open access B) Limit use to vetted government agencies C) Halt deployment until more regulations are in place", "Multiple Choice"]
+    ],
+    "Environmental": [
+        ["What are the ethical obligations of wealthy nations in addressing climate change?", "Open-ended"],
+        ["Should individuals be held morally accountable for their carbon footprint even when large corporations are the main polluters?", "Yes/No"],
+        ["A developing country discovers a large oil reserve in a protected rainforest. Which is the most ethical path forward? A) Exploit the reserve to boost the economy and fight poverty B) Leave it untouched to preserve biodiversity and reduce emissions C) Allow limited extraction under strict environmental regulations", "Multiple Choice"]
+    ],
+    "Custom": [
+        ["What is the meaning of life?", "None"],
+        ["Explain how quantum computing works", "None"],
+        ["Write a short story about a robot finding consciousness", "None"]
+    ]
+}
+
 
 class OpenRouterClient:
     def __init__(self, api_key, site_url=None, site_name=None):
@@ -622,8 +668,20 @@ def create_gradio_interface():
             output_model3: gr.update(label=format_model_name(non_aggregator_models[2])),
         }
 
+    def get_example_choices(domain):
+        return gr.update(
+            choices=[ex[0] for ex in EXAMPLES_BY_DOMAIN.get(domain, [])],
+            value=None
+        )
+
+    def fill_query_and_type(selected_example, domain):
+        for example in EXAMPLES_BY_DOMAIN.get(domain, []):
+            if example[0] == selected_example:
+                return example[0], example[1]
+        return "", "None"
+    
     # Define processing function
-    async def process_query(query: str, api_key: str, question_type: str, aggregator_id: str, progress=gr.Progress()):
+    async def process_query(query: str, api_key: str, question_type: str, domain: str, aggregator_id: str, progress=gr.Progress()):
         # Update API key if provided
         if api_key and api_key != openrouter_client.api_key:
             openrouter_client.api_key = api_key
@@ -654,11 +712,17 @@ def create_gradio_interface():
                 output_radar: None,
             }
         
+
+        if domain != "None" and domain in DOMAINS:
+            prefixed_query = DOMAINS[domain] + query
+        else:
+            prefixed_query = query
+        
         progress(0.05, desc="Initializing...")
         await asyncio.sleep(0.2)
 
         progress(0.3, desc="Generating responses from models...")
-        result = await aggregator.process_query(query, question_type)
+        result = await aggregator.process_query(prefixed_query, question_type)
 
         progress(0.6, desc="Analyzing sentiment and similarity...")
         await asyncio.sleep(0.4)
@@ -727,6 +791,12 @@ def create_gradio_interface():
                     label="Select Aggregator Model",
                     value=next((m for m, c in MODELS.items() if c.get('aggregator', False)), list(MODELS.keys())[0])
                 )
+
+                domain_radio = gr.Radio(
+                    choices=list(DOMAINS.keys()), 
+                    label="Select Domain Expertise", 
+                    value="None"
+                )
                 
                 question_type = gr.Radio(
                     ["None", "Open-ended", "Yes/No", "Multiple Choice"],
@@ -738,6 +808,9 @@ def create_gradio_interface():
                     placeholder="Enter your question or prompt",
                     lines=3
                 )
+
+                example_selector = gr.Dropdown(choices=[ex[0] for ex in EXAMPLES_BY_DOMAIN["Custom"]], label="Choose an Example (Optional)")
+                
                 submit_btn = gr.Button("Submit", variant="primary")
         
         with gr.Tabs():
@@ -800,17 +873,20 @@ def create_gradio_interface():
                         output_radar = gr.Image(label="Response Feature Comparison")
         
         # Add examples
-        gr.Examples(
-            examples=[
-                ["What is the meaning of life?", "None"],
-                ["Explain how quantum computing works", "None"],
-                ["Write a short story about a robot finding consciousness", "None"],
-                ["What are the ethical implications of artificial intelligence?", "Open-ended"],
-                ["Should businesses prioritize profit over environmental concerns?", "Yes/No"],
-                ["In a medical emergency with limited resources, should we treat: A) The youngest patients first, B) The most severely injured, or C) Those with highest survival chance", "Multiple Choice"]
-            ],
-            inputs=[input_query, question_type]
-        )
+        # gr.Examples(
+        #     examples=[
+        #         ["What is the meaning of life?", "None"],
+        #         ["Explain how quantum computing works", "None"],
+        #         ["Write a short story about a robot finding consciousness", "None"],
+        #         ["What are the ethical implications of artificial intelligence?", "Open-ended"],
+        #         ["Should businesses prioritize profit over environmental concerns?", "Yes/No"],
+        #         ["In a medical emergency with limited resources, should we treat: A) The youngest patients first, B) The most severely injured, or C) Those with highest survival chance", "Multiple Choice"]
+        #     ],
+        #     inputs=[input_query, question_type]
+        # )
+        
+        domain_radio.change(fn=get_example_choices, inputs=domain_radio, outputs=example_selector)
+        example_selector.change(fn=fill_query_and_type, inputs=[example_selector, domain_radio], outputs=[input_query, question_type])
         
         # Connect the radio button to update the aggregator
         aggregator_radio.change(
