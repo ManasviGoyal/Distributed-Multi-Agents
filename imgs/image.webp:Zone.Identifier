@@ -1,0 +1,4 @@
+[ZoneTransfer]
+ZoneId=3
+ReferrerUrl=http://127.0.0.1:7871/
+HostUrl=http://127.0.0.1:7871/gradio_api/file=/tmp/gradio/c62f2c4ca43482cbd45fb6c8ef6c5cf73f3fe3e3f683f2a2b8e3e6f0b808e570/image.webp

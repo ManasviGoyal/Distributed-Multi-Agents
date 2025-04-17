@@ -129,16 +129,25 @@ def fill_query_and_type(selected_example, domain):
 def update_output_labels(aggregator_id):
     """Update the output labels based on the selected aggregator"""
     global model_info
-    
-    if not model_info:
+
+    try:
+        # Re-fetch model info from backend to get updated aggregator flags
+        response = requests.get(f"{BACKEND_URL}/models")
+        if response.status_code == 200:
+            model_info = response.json()
+        else:
+            logger.error(f"Failed to refresh models: {response.status_code}")
+            return {}
+    except Exception as e:
+        logger.error(f"Error refreshing models: {str(e)}")
         return {}
-    
+
     # Get non-aggregator model IDs
     non_aggregator_models = [model_id for model_id, info in model_info.items() 
-                           if not info.get("aggregator", False)]
-    
+                             if not info.get("aggregator", False)]
+
     # Update model labels
-    if len(non_aggregator_models) >= 3:
+    if aggregator_id in model_info and len(non_aggregator_models) >= 3:
         return {
             output_aggregator: gr.update(label=model_info[aggregator_id]["display_name"]),
             output_model1: gr.update(label=model_info[non_aggregator_models[0]]["display_name"]),
@@ -147,6 +156,7 @@ def update_output_labels(aggregator_id):
         }
     else:
         return {}
+
 
 def process_query(query, api_key, question_type, domain, aggregator_id, progress=gr.Progress()):
     """Process a query and wait for results"""
