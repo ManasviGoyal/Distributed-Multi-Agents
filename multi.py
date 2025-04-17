@@ -319,20 +319,20 @@ class ResponseAggregator:
             except Exception as e:
                 logger.error(f"Error with {model_id}: {str(e)}")
                 model_responses[model_id] = f"Error: {str(e)}"
-        
-        # Analyze responses
-        analysis = await self.analyze_responses(query, model_responses)
-        
-        # Generate consensus summary using the aggregator model
+
+        # Identify aggregator
         aggregator_id = next((model_id for model_id, config in MODELS.items() if config.get('aggregator', False)), None)
-        
+
+        # Generate consensus summary using the aggregator model
         if aggregator_id:
             consensus_summary = await self.generate_consensus_summary(query, model_responses, aggregator_id)
             model_responses[aggregator_id] = consensus_summary  # Add aggregator response
         else:
-            # Fallback if no aggregator is specified
             consensus_summary = "No aggregator model specified"
-        
+
+        # Analyze responses — now includes aggregator too
+        analysis = await self.analyze_responses(query, model_responses)
+
         return {
             "query": query,
             "formatted_query": formatted_query,
