@@ -29,6 +29,7 @@ import matplotlib
 matplotlib.use('Agg')  # Use non-interactive backend
 
 import matplotlib.pyplot as plt
+from database_manager import DatabaseManager
 
 # Download nltk data
 try:
@@ -137,6 +138,9 @@ EXAMPLES_BY_DOMAIN = {
         ["Write a short story about a robot finding consciousness", "None"]
     ]
 }
+
+# Initialize the database manager
+db_manager = DatabaseManager()
 
 # Initialize FastAPI
 app = FastAPI(title="Multi-Agent LLM Backend")
@@ -719,6 +723,30 @@ async def api_fill_query_and_type(request: FillQueryRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# Add new endpoints to server.py
+@app.get("/history")
+async def api_get_history(limit: int = 50):
+    """Get interaction history"""
+    try:
+        history = db_manager.get_interaction_history(limit)
+        return {"history": history}
+    except Exception as e:
+        logger.error(f"Error getting history: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/history/{job_id}")
+async def api_delete_history_item(job_id: str):
+    """Delete an interaction from history"""
+    try:
+        success = db_manager.delete_interaction(job_id)
+        if success:
+            return {"success": True}
+        else:
+            raise HTTPException(status_code=500, detail="Failed to delete interaction")
+    except Exception as e:
+        logger.error(f"Error deleting history item: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/process_query")
 async def api_process_query(request: QueryRequest, background_tasks: BackgroundTasks):
     """Process a query with all models and return results"""
@@ -756,7 +784,8 @@ async def api_process_query(request: QueryRequest, background_tasks: BackgroundT
             process_query_background,
             job_id,
             prefixed_query,
-            request.question_type
+            request.question_type,
+            request.domain
         )
         
         return {
@@ -777,16 +806,37 @@ async def api_job_status(job_id: str):
 
 @app.get("/job_result/{job_id}")
 async def api_job_result(job_id: str):
-    """Get the result of a completed job"""
-    if job_id not in active_jobs:
+    if job_id in active_jobs:
+        job = active_jobs[job_id]
+        if job["status"] != "completed":
+            return {"status": job["status"]}
+        return job["result"]
+
+    # Fallback: Try from database
+    result = db_manager.get_interaction(job_id)
+    if not result:
         raise HTTPException(status_code=404, detail="Job not found")
-    
-    job = active_jobs[job_id]
-    
-    if job["status"] != "completed":
-        return {"status": job["status"]}
-    
-    return job["result"]
+
+    responses = {agent_id: data["response"] for agent_id, data in result["responses"].items()}
+    analysis = result.get("analysis", {})
+    consensus_score = round(result.get("consensus_score", 0) * 100)
+    aggregator_id = next((agent_id for agent_id, data in result["responses"].items() if data["is_aggregator"]), "")
+
+    # Rehydrate active_jobs to make image routes work
+    active_jobs[job_id] = {
+        "status": "completed",
+        "progress": 100,
+        "result": {
+            "responses": responses,
+            "analysis": analysis,
+            "consensus_score": consensus_score,
+            "query": result["query"],
+            "question_type": result.get("question_type", "None"),
+            "aggregator_id": aggregator_id
+        }
+    }
+
+    return active_jobs[job_id]["result"]
 
 @app.get("/image/{job_id}/{image_type}")
 async def api_get_image(job_id: str, image_type: str):
@@ -818,7 +868,7 @@ async def api_get_image(job_id: str, image_type: str):
     else:
         raise HTTPException(status_code=404, detail="Image not found")
 
-async def process_query_background(job_id: str, query: str, question_type: str):
+async def process_query_background(job_id: str, query: str, question_type: str, domain: str = "Custom"):
     """Process a query in the background"""
     try:
         # Update job status
@@ -827,12 +877,19 @@ async def process_query_background(job_id: str, query: str, question_type: str):
             "progress": 0
         }
         
+        # Save the interaction to database
+        db_manager.save_interaction(job_id, query, domain, question_type)
+
         # Update progress
         active_jobs[job_id]["progress"] = 10
         
+        active_jobs[job_id]["progress"] = 30
+
         # Process the query
         result = await response_aggregator.process_query(query, question_type)
         
+        active_jobs[job_id]["progress"] = 60
+
         # Update progress
         active_jobs[job_id]["progress"] = 90
         
@@ -846,18 +903,19 @@ async def process_query_background(job_id: str, query: str, question_type: str):
                                 if not config.get('aggregator', False)]
         
         # Construct result dictionary
-        model_responses = {}
-        if aggregator_id:
-            model_responses[aggregator_id] = responses.get(aggregator_id, "Error: Aggregator model failed to respond")
-        
-        for model_id in non_aggregator_models:
-            model_responses[model_id] = responses.get(model_id, "Error: Model failed to respond")
-        
+        model_responses = {
+            model_id: responses.get(model_id, "Error: Model failed to respond")
+            for model_id in MODELS.keys()
+        }
+        # Save responses to database
+        db_manager.save_responses(job_id, model_responses, aggregator_id)
+
         # Calculate consensus score
         consensus_score = 0
         if "error" not in analysis:
             consensus_score = round(analysis.get("consensus_score", 0) * 100)
-        
+            db_manager.save_analysis(job_id, consensus_score / 100, analysis)
+
         # Update job status to completed
         active_jobs[job_id] = {
             "status": "completed",
@@ -928,8 +986,8 @@ if __name__ == "__main__":
     import argparse
     
     parser = argparse.ArgumentParser(description="Multi-Agent LLM Backend Server")
-    parser.add_argument("--host", type=str, default="0.0.0.0", help="Host to run the server on")
-    parser.add_argument("--port", type=int, default=8000, help="Port to run the server on")
+    parser.add_argument("--host", type=str, default=os.getenv("HOST", "0.0.0.0"), help="Host to run the server on")
+    parser.add_argument("--port", type=int, default=int(os.getenv("PORT", 8000)), help="Port to run the server on")
     
     args = parser.parse_args()
     

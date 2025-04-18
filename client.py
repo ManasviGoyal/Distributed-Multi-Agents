@@ -5,6 +5,7 @@ import json
 import time
 import argparse
 import os
+from datetime import datetime
 from typing import Dict, List, Any
 from dotenv import load_dotenv
 
@@ -16,7 +17,7 @@ load_dotenv()
 
 # Configuration
 API_KEY = os.getenv("OPENROUTER_API_KEY", "")
-BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
+BACKEND_URL = os.getenv("BACKEND_URL") or f"http://{os.getenv('HOST', 'localhost')}:{os.getenv('PORT', '8000')}"
 
 # Set up logging
 import logging
@@ -91,6 +92,10 @@ def update_aggregator(aggregator_id):
 def get_example_choices(domain):
     """Get example choices for a domain"""
     try:
+        # Check if domain is null or empty
+        if not domain:
+            return gr.update(choices=[], value=None)
+            
         response = requests.post(
             f"{BACKEND_URL}/get_example_choices",
             json={"domain": domain}
@@ -427,7 +432,217 @@ def create_gradio_interface():
                         output_polarity = gr.Image(label="Sentiment Polarity")
                     with gr.Column():
                         output_radar = gr.Image(label="Response Feature Comparison")
-        
+
+            with gr.TabItem("Interaction History"):
+                with gr.Row():
+                    refresh_history_btn = gr.Button("🔄 Refresh History")
+                
+                # Use Gradio Dataframe with appropriate columns
+                history_list = gr.Dataframe(
+                    headers=["Time", "Query", "Domain", "Question Type", "Aggregator Response", "Consensus"],
+                    datatype=["str", "str", "str", "str", "str", "number"],
+                    interactive=False,
+                    row_count=10
+                )
+                
+                # Hidden state to store job IDs
+                history_job_ids = gr.State([])
+                
+                def refresh_history():
+                    try:
+                        response = requests.get(f"{BACKEND_URL}/history?limit=100")
+                        if response.status_code != 200:
+                            return [], []
+                        
+                        history = response.json().get("history", [])
+                        if not history:
+                            return [], []
+                        
+                        rows = []
+                        job_ids = []
+                        
+                        for item in history:
+                            timestamp = datetime.fromtimestamp(item["timestamp"]).strftime("%Y-%m-%d %H:%M")
+                            query = item["query"]
+                            preview = query[:100] + "..." if len(query) > 100 else query
+                            domain = item.get("domain", "Custom")
+                            question_type = item.get("question_type", "None")
+                            
+                            # Get aggregator response preview - improved handling
+                            responses = item.get("responses", {})
+                            aggregator_id = item.get("aggregator_id", "")
+                            
+                            # If aggregator_id is empty or not in responses, try to find an aggregator response
+                            if not aggregator_id or aggregator_id not in responses:
+                                # Try to identify an aggregator from the model_info
+                                for model_id, info in model_info.items():
+                                    if info.get("aggregator", False) and model_id in responses:
+                                        aggregator_id = model_id
+                                        break
+                            
+                            aggregator_response = responses.get(aggregator_id, "")
+                            if not aggregator_response and responses:
+                                # If still no aggregator response but we have responses, use the first one
+                                aggregator_response = next(iter(responses.values()), "")
+                                
+                            agg_preview = aggregator_response[:100] + "..." if len(aggregator_response) > 100 else aggregator_response
+                            
+                            consensus = item.get("consensus_score", 0)
+                            job_id = item["job_id"]
+                            
+                            rows.append([timestamp, preview, domain, question_type, agg_preview, consensus])
+                            job_ids.append(job_id)
+                        
+                        return rows, job_ids
+                    except Exception as e:
+                        logger.error(f"Error fetching history: {str(e)}")
+                        return [], []
+                
+                # Selection indication
+                with gr.Row():
+                    gr.Markdown("First, select a row by clicking on it, then use these buttons:")
+                
+                # Add explicit buttons with selected row indicator
+                with gr.Row():
+                    selected_row_info = gr.Markdown("No row selected")
+                    selected_row_idx = gr.State(-1)
+                
+                with gr.Row():
+                    load_btn = gr.Button("📥 Load Selected Entry")
+                    delete_btn = gr.Button("🗑️ Delete Selected Entry")
+                
+                # Update selected row when user clicks
+                def update_selected_row(evt: gr.SelectData, current_idx):
+                    row_idx = evt.index[0]
+                    if row_idx == current_idx:  # If clicking already selected row
+                        return -1, "No row selected"
+                    return row_idx, f"Selected row: {row_idx + 1}"
+
+                # Connect selection event
+                history_list.select(
+                    fn=update_selected_row,
+                    inputs=[selected_row_idx],  # Pass current index
+                    outputs=[selected_row_idx, selected_row_info]
+                )
+                
+                # Load selected row
+                def load_selected_row(row_idx, job_ids):
+                    if row_idx < 0 or row_idx >= len(job_ids):
+                        return [None] * 12
+                    
+                    try:
+                        job_id = job_ids[row_idx]
+                        
+                        # Get full job details
+                        result_response = requests.get(f"{BACKEND_URL}/job_result/{job_id}")
+                        
+                        if result_response.status_code == 404:
+                            logger.warning(f"Job {job_id} not found. It may have been deleted.")
+                            # Return empty values but don't refresh to avoid UI disruption
+                            return ["Job not found - refresh history", "", "", "", "", "", "", 0, None, None, None, None]
+
+                        if result_response.status_code == 200:
+                            result = result_response.json()
+                            
+                            # Get responses
+                            responses = result.get("responses", {})
+                            aggregator_id = result.get("aggregator_id", "")
+                            
+                            # Get non-aggregator model IDs
+                            non_aggregator_models = [model_id for model_id, info in model_info.items() 
+                                                if not info.get("aggregator", False)] if model_info else []
+                            
+                            consensus_score_value = result.get("consensus_score", 0)
+                            
+                            # Get query and metadata
+                            query = result.get("query", "")
+                            domain = result.get("domain", "Custom")
+                            q_type = result.get("question_type", "None")
+                            
+                            # Define fetch_image function locally if not already defined
+                            def fetch_image(url):
+                                try:
+                                    res = requests.get(url)
+                                    if res.status_code == 200:
+                                        return Image.open(BytesIO(res.content))
+                                except Exception as e:
+                                    logger.warning(f"Failed to fetch image from {url}: {e}")
+                                return None
+                            
+                            # Prepare return values
+                            return [
+                                query, domain, q_type,
+                                responses.get(aggregator_id, ""),
+                                responses.get(non_aggregator_models[0], "") if len(non_aggregator_models) > 0 else "",
+                                responses.get(non_aggregator_models[1], "") if len(non_aggregator_models) > 1 else "",
+                                responses.get(non_aggregator_models[2], "") if len(non_aggregator_models) > 2 else "",
+                                consensus_score_value,
+                                fetch_image(f"{BACKEND_URL}/image/{job_id}/heatmap"),
+                                fetch_image(f"{BACKEND_URL}/image/{job_id}/emotion_chart"),
+                                fetch_image(f"{BACKEND_URL}/image/{job_id}/polarity_chart"),
+                                fetch_image(f"{BACKEND_URL}/image/{job_id}/radar_chart")
+                            ]
+                        elif result_response.status_code == 404:
+                            logger.warning(f"Job {job_id} not found. It may have been deleted.")
+                            # Refresh the history to remove stale entries
+                            refresh_history()
+                            return [None] * 12
+                        else:
+                            logger.error(f"Failed to fetch job {job_id}: {result_response.status_code}")
+                            return [None] * 12
+                    except Exception as e:
+                        logger.error(f"Error loading job: {str(e)}")
+                        return [None] * 12
+                
+                # Delete selected row
+                def delete_selected_row(row_idx, job_ids):
+                    if row_idx < 0 or row_idx >= len(job_ids):
+                        return gr.update(), gr.update(), "No row selected"
+                    
+                    try:
+                        job_id = job_ids[row_idx]
+                        
+                        # Delete the job
+                        delete_response = requests.delete(f"{BACKEND_URL}/history/{job_id}")
+                        if delete_response.status_code == 200:
+                            logger.info(f"Deleted job {job_id}")
+                            # Refresh the history
+                            rows, job_ids = refresh_history()
+                            return rows, job_ids, "Row deleted successfully"
+                        else:
+                            logger.error(f"Failed to delete job {job_id}: {delete_response.status_code}")
+                            return gr.update(), gr.update(), f"Failed to delete: {delete_response.status_code}"
+                    except Exception as e:
+                        logger.error(f"Error deleting job: {str(e)}")
+                        return gr.update(), gr.update(), f"Error: {str(e)}"
+                
+                # Connect buttons
+                load_btn.click(
+                    fn=load_selected_row,
+                    inputs=[selected_row_idx, history_job_ids],
+                    outputs=[
+                        input_query, domain_radio, question_type,
+                        output_aggregator, output_model1, output_model2, output_model3,
+                        consensus_score, output_heatmap, output_emotion, output_polarity, output_radar
+                    ]
+                )
+                
+                delete_btn.click(
+                    fn=delete_selected_row,
+                    inputs=[selected_row_idx, history_job_ids],
+                    outputs=[history_list, history_job_ids, selected_row_info]
+                )
+                
+                # Connect refresh button
+                refresh_history_btn.click(
+                    fn=refresh_history,
+                    inputs=None,
+                    outputs=[history_list, history_job_ids]
+                )
+                
+                # Load history on startup
+                app.load(fn=refresh_history, inputs=None, outputs=[history_list, history_job_ids])
+
         # Connect the domain radio button to update example choices
         domain_radio.change(fn=get_example_choices, inputs=domain_radio, outputs=example_selector)
         
@@ -445,17 +660,33 @@ def create_gradio_interface():
         # Connect the connect button to test the connection
         def test_connection(url):
             try:
+                # Test basic connectivity
                 response = requests.get(f"{url}/")
-                if response.status_code == 200:
-                    # Try to refresh model info
-                    global model_info, domains, question_types, examples_by_domain
-                    init_success = init_client()
-                    if init_success:
-                        return "Connected successfully! Model information updated."
-                    else:
-                        return "Connected to backend, but failed to update model information."
-                else:
+                if response.status_code != 200:
                     return f"Failed to connect to backend: Status code {response.status_code}"
+                
+                # Test models endpoint
+                models_response = requests.get(f"{url}/models")
+                if models_response.status_code != 200:
+                    return "Connected to backend, but models endpoint failed."
+                
+                # Test domains endpoint
+                domains_response = requests.get(f"{url}/domains")
+                if domains_response.status_code != 200:
+                    return "Connected to backend, but domains endpoint failed."
+                    
+                # Test history endpoint
+                history_response = requests.get(f"{url}/history?limit=1")
+                if history_response.status_code != 200:
+                    return "Connected to backend, but history endpoint failed."
+                
+                # If all tests pass, refresh the client data
+                global model_info, domains, question_types, examples_by_domain
+                init_success = init_client()
+                if init_success:
+                    return "Connected successfully! All endpoints validated."
+                else:
+                    return "Connected to backend, but failed to update client information."
             except Exception as e:
                 return f"Error connecting to backend: {str(e)}"
         
@@ -488,7 +719,7 @@ def create_gradio_interface():
                 output_radar
             ]
         )
-    
+                    
     return app
 
 # Create .env file template
@@ -507,6 +738,7 @@ def main():
     # Parse command line arguments
     parser = argparse.ArgumentParser(description="Multi-Agent LLM Client")
     parser.add_argument("--backend-url", type=str, default=BACKEND_URL, help="URL of the backend server")
+    parser.add_argument("--host", type=str, default="0.0.0.0", help="Host for Gradio client")
     parser.add_argument("--port", type=int, default=7860, help="Port to run the Gradio interface on")
     parser.add_argument("--share", action="store_true", help="Create a shareable link")
     
@@ -520,7 +752,7 @@ def main():
     
     # Create and launch Gradio app
     app = create_gradio_interface()
-    app.launch(server_port=args.port, share=args.share)
+    app.launch(server_name=args.host, server_port=args.port, share=args.share)
 
 if __name__ == "__main__":
     main()
