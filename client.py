@@ -31,47 +31,41 @@ domains = None
 question_types = None
 examples_by_domain = None
 
-def init_client():
-    """Initialize the client by fetching data from the backend"""
+def init_client(retries: int = 3, delay: float = 1.5) -> bool:
+    """Initialize the client by fetching data from the backend with retries"""
     global model_info, domains, question_types, examples_by_domain
-    
-    try:
-        # Fetch model information
-        response = requests.get(f"{BACKEND_URL}/models")
-        if response.status_code == 200:
+    attempt = 0
+
+    while attempt < retries:
+        try:
+            logger.info(f"Attempting to connect to backend ({attempt + 1}/{retries}) at {BACKEND_URL}")
+
+            # Try one representative endpoint first to check connectivity
+            response = requests.get(f"{BACKEND_URL}/models", timeout=5)
+            if response.status_code != 200:
+                raise Exception(f"Status code {response.status_code} on /models")
+
+            # If models are reachable, fetch everything
             model_info = response.json()
-        else:
-            logger.error(f"Failed to fetch models: {response.status_code}")
-            model_info = {}
-        
-        # Fetch domains
-        response = requests.get(f"{BACKEND_URL}/domains")
-        if response.status_code == 200:
-            domains = response.json().get("domains", {})
-        else:
-            logger.error(f"Failed to fetch domains: {response.status_code}")
-            domains = {}
-        
-        # Fetch question types
-        response = requests.get(f"{BACKEND_URL}/question_types")
-        if response.status_code == 200:
-            question_types = response.json().get("question_types", [])
-        else:
-            logger.error(f"Failed to fetch question types: {response.status_code}")
-            question_types = []
-        
-        # Fetch examples
-        response = requests.get(f"{BACKEND_URL}/examples")
-        if response.status_code == 200:
-            examples_by_domain = response.json().get("examples", {})
-        else:
-            logger.error(f"Failed to fetch examples: {response.status_code}")
-            examples_by_domain = {}
-            
-        return True
-    except Exception as e:
-        logger.error(f"Error initializing client: {str(e)}")
-        return False
+
+            response = requests.get(f"{BACKEND_URL}/domains")
+            domains = response.json().get("domains", {}) if response.status_code == 200 else {}
+
+            response = requests.get(f"{BACKEND_URL}/question_types")
+            question_types = response.json().get("question_types", []) if response.status_code == 200 else []
+
+            response = requests.get(f"{BACKEND_URL}/examples")
+            examples_by_domain = response.json().get("examples", {}) if response.status_code == 200 else {}
+
+            return True
+
+        except Exception as e:
+            logger.warning(f"Failed to connect to backend: {e}")
+            attempt += 1
+            time.sleep(delay)
+
+    logger.error("Failed to connect after multiple attempts.")
+    return False
 
 def update_aggregator(aggregator_id):
     """Update the aggregator model on the backend"""
@@ -307,7 +301,7 @@ def create_gradio_interface():
     # Initialize client
     init_success = init_client()
     if not init_success:
-        logger.warning("Failed to initialize client. Using default values.")
+        raise RuntimeError(f"Failed to connect to backend at {BACKEND_URL} after 3 attempts. Please check the server and try again.")
     
     with gr.Blocks(title="Multi-Agent LLM System") as app:
         gr.Markdown(
@@ -439,12 +433,12 @@ def create_gradio_interface():
                 
                 # Use Gradio Dataframe with appropriate columns
                 history_list = gr.Dataframe(
-                    headers=["Time", "Query", "Domain", "Question Type", "Aggregator Response", "Consensus"],
-                    datatype=["str", "str", "str", "str", "str", "number"],
+                    headers=["Time", "Query", "Domain", "Question Type", "Consensus"],
+                    datatype=["str", "str", "str", "str", "number"],
                     interactive=False,
                     row_count=10
                 )
-                
+
                 # Hidden state to store job IDs
                 history_job_ids = gr.State([])
                 
@@ -484,13 +478,11 @@ def create_gradio_interface():
                             if not aggregator_response and responses:
                                 # If still no aggregator response but we have responses, use the first one
                                 aggregator_response = next(iter(responses.values()), "")
-                                
-                            agg_preview = aggregator_response[:100] + "..." if len(aggregator_response) > 100 else aggregator_response
-                            
+                                                            
                             consensus = item.get("consensus_score", 0)
                             job_id = item["job_id"]
                             
-                            rows.append([timestamp, preview, domain, question_type, agg_preview, consensus])
+                            rows.append([timestamp, preview, domain, question_type, consensus])
                             job_ids.append(job_id)
                         
                         return rows, job_ids

@@ -876,9 +876,6 @@ async def process_query_background(job_id: str, query: str, question_type: str, 
             "status": "processing",
             "progress": 0
         }
-        
-        # Save the interaction to database
-        db_manager.save_interaction(job_id, query, domain, question_type)
 
         # Update progress
         active_jobs[job_id]["progress"] = 10
@@ -907,10 +904,22 @@ async def process_query_background(job_id: str, query: str, question_type: str, 
             model_id: responses.get(model_id, "Error: Model failed to respond")
             for model_id in MODELS.keys()
         }
-        # Save responses to database
-        db_manager.save_responses(job_id, model_responses, aggregator_id)
 
-        # Calculate consensus score
+        # Check if any response failed
+        if any(resp.startswith("Error") for resp in model_responses.values()):
+            logger.warning(f"Skipping DB save for job {job_id} due to errors in model responses.")
+            active_jobs[job_id] = {
+                "status": "error",
+                "error": "One or more model responses failed"
+            }
+            return  # Stop here, do NOT save to database
+
+        # All models succeeded, safe to save
+        db_manager.save_responses(job_id, model_responses, aggregator_id)
+        # Save the interaction to database
+        db_manager.save_interaction(job_id, query, domain, question_type)
+        
+        # Calculate and save analysis
         consensus_score = 0
         if "error" not in analysis:
             consensus_score = round(analysis.get("consensus_score", 0) * 100)
