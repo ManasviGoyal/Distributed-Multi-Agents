@@ -24,6 +24,8 @@ import uvicorn
 import uuid
 from starlette.responses import StreamingResponse
 import base64
+import time
+from datetime import datetime, timedelta
 
 import matplotlib
 matplotlib.use('Agg')  # Use non-interactive backend
@@ -57,6 +59,11 @@ MODEL_COLORS = {
     "deephermes": "#9b59b6" # Purple
 }
 
+# Agent health monitoring settings
+HEALTH_CHECK_INTERVAL = 10  # Seconds between health checks
+HEALTH_TIMEOUT = 60  # Seconds before agent considered failed
+MAX_RETRIES = 3  # Maximum number of retries for a failed model
+
 # Models configuration
 MODELS = {
     "qwen": {
@@ -69,7 +76,7 @@ MODELS = {
         "aggregator": True,  # Mark llama3 as the aggregator model
     },
     "mistral": {
-        "name": "mistralai/mistral-7b-instruct:free",
+        "name": "misstralai/mistral-7b-instruct:free",
         "temperature": 0.3,
     },
     "deephermes": {
@@ -185,7 +192,22 @@ class OpenRouterClient:
         self.sentiment_analyzer = SentimentIntensityAnalyzer()
     
     async def generate_response(self, model_name: str, prompt: str, temperature: float = 0.7) -> str:
-        """Generate a response from a specific model via OpenRouter API"""
+        """Generate a response from a specific model via OpenRouter API with fault tolerance"""
+        # Get model ID from model name
+        model_id = next((mid for mid, config in MODELS.items() if config['name'] == model_name), None)
+        
+        if not model_id:
+            logger.warning(f"Unknown model: {model_name}")
+            return f"Error: Unknown model {model_name}"
+        
+        # Update heartbeat at the start
+        await update_agent_heartbeat(model_id)
+        
+        # Check if agent is marked as failed and max retries exceeded
+        if model_id in agent_health and agent_health[model_id]["status"] == "failed" and agent_health[model_id]["retries"] >= MAX_RETRIES:
+            logger.error(f"Model {model_id} has failed too many times and is disabled")
+            return f"Error: Model {model_id} is currently unavailable"
+
         try:
             headers = {
                 "Authorization": f"Bearer {self.api_key}",
@@ -209,26 +231,68 @@ class OpenRouterClient:
                 "temperature": temperature,
                 "max_tokens": 500  # Limit response length
             }
-            
-            # Make API request asynchronously
-            response = await asyncio.to_thread(
-                requests.post,
-                url=self.url,
-                headers=headers,
-                data=json.dumps(data)
-            )
-            
+
+            # Make API request asynchronously with timeout
+            try:
+                response = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        requests.post,
+                        url=self.url,
+                        headers=headers,
+                        data=json.dumps(data)
+                    ),
+                    timeout=30  # 30 second timeout
+                )
+            except asyncio.TimeoutError:
+                # Mark agent as unhealthy on timeout
+                if model_id in agent_health:
+                    agent_health[model_id]["failures"] += 1
+                    agent_health[model_id]["status"] = "unhealthy"
+                logger.error(f"Timeout when calling {model_id}")
+                return f"Error: Timeout when calling {model_id}"
+        
             if response.status_code == 200:
                 result = response.json()
+                await update_agent_heartbeat(model_id)
+                if model_id in agent_health:
+                    agent_health[model_id]["failures"] = 0
+                    agent_health[model_id]["retries"] = 0
                 return result["choices"][0]["message"]["content"]
             else:
-                logger.error(f"API error: {response.status_code} - {response.text}")
+                # Handle specific 400 error for invalid model ID
+                if response.status_code == 400:
+                    try:
+                        error_json = response.json()
+                        if "not a valid model ID" in error_json.get("error", {}).get("message", ""):
+                            if model_id in agent_health:
+                                agent_health[model_id]["status"] = "failed"
+                                agent_health[model_id]["retries"] += 1
+                            logger.error(f"Invalid model ID for {model_id}. Marked as failed.")
+                            return f"Error: Invalid model ID '{model_name}'"
+                    except Exception as parse_error:
+                        logger.warning(f"Error parsing 400 response: {parse_error}")
+
+                # General failure handling
+                if model_id in agent_health:
+                    agent_health[model_id]["failures"] += 1
+                    if agent_health[model_id]["failures"] >= 3:
+                        agent_health[model_id]["status"] = "failed"
+                        agent_health[model_id]["retries"] += 1
+
+                logger.error(f"API error for {model_id}: {response.status_code} - {response.text}")
                 return f"Error: API returned status code {response.status_code}"
-        
+
         except Exception as e:
-            logger.error(f"Error generating with {model_name}: {str(e)}")
-            return f"Error with {model_name}: {str(e)}"
-    
+            # Increment failure count
+            if model_id in agent_health:
+                agent_health[model_id]["failures"] += 1
+                if agent_health[model_id]["failures"] >= 3:
+                    agent_health[model_id]["status"] = "failed"
+                    agent_health[model_id]["retries"] += 1
+            
+            logger.error(f"Error generating with {model_id}: {str(e)}")
+            return f"Error with {model_id}: {str(e)}"
+        
     def get_embeddings(self, texts: List[str]) -> np.ndarray:
         """Get embeddings for a list of texts"""
         return self.sentence_encoder.encode(texts)
@@ -326,14 +390,13 @@ class OpenRouterClient:
             'emotional_tones': emotional_tones
         }
 
-
 # Response Aggregator class
 class ResponseAggregator:
     def __init__(self, openrouter_client):
         self.client = openrouter_client
     
     async def process_query(self, query: str, question_type: str = "none") -> Dict[str, Any]:
-        """Process query through all models and aggregate results"""
+        """Process query through all models and aggregate results with fault tolerance and failover"""
         model_responses = {}
         
         # Apply prefix based on question type
@@ -342,39 +405,146 @@ class ResponseAggregator:
         else:
             formatted_query = query
         
-        # Create tasks for non-aggregator models
-        tasks = []
-        for model_id, config in MODELS.items():
-            if not config.get('aggregator', False):
-                task = asyncio.create_task(
-                    self.client.generate_response(
-                        config['name'], 
-                        formatted_query,
-                        config['temperature']
-                    )
-                )
-                tasks.append((model_id, task))
+        # Check agent health before processing
+        await check_agent_health()
         
-        # Gather responses from non-aggregator models
+        # === STEP 1: Pick up to 3 healthy agent models (excluding aggregator) ===
+        available_agents = []
+        for model_id, config in MODELS.items():
+            if config.get("aggregator", False):
+                continue  # Skip aggregator
+
+            health = agent_health.get(model_id, {})
+            if health.get("status") == "failed" and health.get("retries", 0) >= MAX_RETRIES:
+                logger.warning(f"Skipping failed model {model_id} (too many retries)")
+                continue
+
+            if health.get("status") in ["healthy", "unhealthy"]:
+                available_agents.append((model_id, config))
+
+            if len(available_agents) == 3:
+                break  # stop once we have 3
+
+        logger.info(f"Selected agent models for query: {[aid for aid, _ in available_agents]}")
+
+        # === STEP 2: Start async tasks for those agents ===
+        model_responses = {}
+        tasks = []
+        for model_id, config in available_agents:
+            task = asyncio.create_task(
+                self.client.generate_response(
+                    config["name"],
+                    formatted_query,
+                    config["temperature"]
+                )
+            )
+            tasks.append((model_id, task))
+
+        # === STEP 3: Await their responses and record results ===
         for model_id, task in tasks:
             try:
-                response = await task
+                response = await asyncio.wait_for(task, timeout=45)
                 model_responses[model_id] = response
+                await update_agent_heartbeat(model_id)
+            except asyncio.TimeoutError:
+                logger.error(f"Timeout for model {model_id}")
+                model_responses[model_id] = f"Error: Timeout for model {model_id}"
+                if model_id in agent_health:
+                    agent_health[model_id]["status"] = "unhealthy"
+                    agent_health[model_id]["failures"] += 1
             except Exception as e:
                 logger.error(f"Error with {model_id}: {str(e)}")
                 model_responses[model_id] = f"Error: {str(e)}"
-
-        # Identify aggregator
+                if model_id in agent_health:
+                    agent_health[model_id]["status"] = "unhealthy"
+                    agent_health[model_id]["failures"] += 1
+    
+        # Identify aggregator and check its health
         aggregator_id = next((model_id for model_id, config in MODELS.items() if config.get('aggregator', False)), None)
+        aggregator_backup_id = None
+
+        # If primary aggregator is unhealthy, choose a backup
+        if (aggregator_id and aggregator_id in agent_health and 
+            (agent_health[aggregator_id]["status"] == "unhealthy" or 
+            agent_health[aggregator_id]["status"] == "failed")):
+            
+            logger.warning(f"Primary aggregator {aggregator_id} is unhealthy, selecting backup")
+            
+            # Find a healthy model to use as backup aggregator
+            for model_id, health in agent_health.items():
+                if health["status"] == "healthy" and model_id != aggregator_id:
+                    aggregator_backup_id = model_id
+                    logger.info(f"Selected {model_id} as backup aggregator")
+                    break
+            
+            if aggregator_backup_id:
+                aggregator_id = aggregator_backup_id
+            else:
+                logger.error("No healthy models available to act as backup aggregator")
 
         # Generate consensus summary using the aggregator model
-        if aggregator_id:
-            consensus_summary = await self.generate_consensus_summary(query, model_responses, aggregator_id)
-            model_responses[aggregator_id] = consensus_summary  # Add aggregator response
-        else:
-            consensus_summary = "No aggregator model specified"
+        # 1. Handle case: no aggregator selected (safety check)
+        if not aggregator_id:
+            logger.error("No aggregator model specified in MODELS.")
+            consensus_summary = "Error: No aggregator model was selected for summarization."
 
-        # Analyze responses — now includes aggregator too
+        # 2. Handle case: only one model remains (no aggregation possible)
+        elif len(model_responses) == 1 and aggregator_id in model_responses:
+            logger.info(f"Only one model ({aggregator_id}) is available — skipping aggregation.")
+            consensus_summary = (
+                "**[Only one model was available. This is a direct response from the aggregator.]**\n\n"
+                + model_responses[aggregator_id]
+            )
+
+        # 3. Normal case: multiple models — perform aggregation
+        else:
+            consensus_summary = await self.generate_consensus_summary(query, model_responses, aggregator_id)
+            model_responses[aggregator_id] = consensus_summary
+
+            # Start fallback loop if the consensus was invalid
+            def is_invalid_consensus(text):
+                return (
+                    text.startswith("Error") or
+                    "invalid model id" in text.lower() or
+                    "cannot generate consensus" in text.lower()
+                )
+
+            tried_aggregators = {aggregator_id}
+            # Get agent model IDs (used earlier in agent response generation)
+            agent_ids = [model_id for model_id, _ in available_agents]
+
+            while is_invalid_consensus(consensus_summary):
+                logger.warning(f"Aggregator {aggregator_id} failed during summarization. Attempting fallback...")
+
+                # Priority 1: healthy models not used as agents
+                primary_fallbacks = [
+                    model_id for model_id, health in agent_health.items()
+                    if health["status"] == "healthy"
+                    and model_id not in tried_aggregators
+                    and model_id not in agent_ids
+                ]
+
+                # Priority 2: healthy agent models
+                secondary_fallbacks = [
+                    model_id for model_id in agent_ids
+                    if model_id not in tried_aggregators
+                    and agent_health[model_id]["status"] == "healthy"
+                ]
+
+                fallback_candidates = primary_fallbacks + secondary_fallbacks
+                if not fallback_candidates:
+                    logger.error("No healthy model available for aggregator fallback.")
+                    break
+
+                aggregator_id = fallback_candidates[0]
+                tried_aggregators.add(aggregator_id)
+                logger.info(f"Fallback aggregator selected: {aggregator_id}")
+                consensus_summary = await self.generate_consensus_summary(query, model_responses, aggregator_id)
+                model_responses[aggregator_id] = consensus_summary
+
+
+
+        # Analyze responses
         analysis = await self.analyze_responses(query, model_responses)
 
         return {
@@ -389,9 +559,23 @@ class ResponseAggregator:
     async def generate_consensus_summary(self, query: str, responses: Dict[str, str], aggregator_id: str) -> str:
         """Generate a summarized consensus from all model responses using the aggregator model"""
         # Check for errors
-        if any(response.startswith("Error:") for response in responses.values()):
-            return "Cannot generate consensus due to model errors."
-        
+        agg_response = responses.get(aggregator_id, "").strip()
+
+        valid_agent_count = sum(
+            1 for mid, resp in responses.items()
+            if mid != aggregator_id and isinstance(resp, str)
+            and not resp.lower().startswith("error")
+            and not resp.lower().startswith("could not generate")
+            and "choices" not in resp.lower()
+        )
+
+        if (
+            not agg_response or
+            agg_response.lower().startswith("error") or
+            agg_response.lower().startswith("could not generate")
+        ) and valid_agent_count < 1:
+            return "Could not generate a summary. All models failed or encountered an error."
+
         responses_text = '\n\n'.join([f"Model {model_id}: {response}" for model_id, response in responses.items()])
 
         summary_prompt = f"""
@@ -421,61 +605,82 @@ class ResponseAggregator:
             temperature=0.3  # Lower temperature for more consistent summaries
         )
         
+        if summary.startswith("Error"):
+            return summary
         # Add prefix to indicate this is from the aggregator model
         return f"SUMMARY\n\n{summary}"
     
     async def analyze_responses(self, query: str, responses: Dict[str, str]) -> Dict[str, Any]:
         """Analyze the different model responses"""
-        # Get response texts
-        texts = list(responses.values())
-        
-        # Skip analysis if there are errors
-        if any(text.startswith("Error:") for text in texts):
-            return {"error": "Cannot analyze responses due to model errors"}
-        
+        texts = []
+        valid_responses = {}
+
+        for model_id, response in responses.items():
+            if (
+                isinstance(response, str) and
+                not response.lower().startswith("error") and
+                not response.lower().startswith("could not generate")
+            ):
+                valid_responses[model_id] = response
+                texts.append(response)
+
+
+        if len(valid_responses) < 2:
+            logger.warning("Not enough valid model responses for visual analysis (<2). Skipping plots.")
+
+            sentiment_analysis = {
+                model_id: await asyncio.to_thread(self.client.analyze_sentiment, response)
+                for model_id, response in valid_responses.items()
+            }
+
+            return {
+                "sentiment_analysis": sentiment_analysis,
+                "response_lengths": {mid: len(resp.split()) for mid, resp in valid_responses.items()},
+                "consensus_score": 1.0,
+                "heatmap": None,
+                "emotion_chart": None,
+                "polarity_chart": None,
+                "radar_chart": None,
+                "warning": "Not enough valid model responses for visual analysis (<2). Skipping plots."
+            }
+
         try:
-            # Get embeddings
+            # Proceed with full analysis if we have enough responses
             embeddings = await asyncio.to_thread(self.client.get_embeddings, texts)
-            
+
             # Calculate similarity matrix
             similarity_matrix = {}
-            for i, model_i in enumerate(responses.keys()):
+            model_ids = list(valid_responses.keys())
+            for i, model_i in enumerate(model_ids):
                 similarity_matrix[model_i] = {}
-                for j, model_j in enumerate(responses.keys()):
+                for j, model_j in enumerate(model_ids):
                     if i != j:
                         sim = 1 - cosine(embeddings[i], embeddings[j])
                         similarity_matrix[model_i][model_j] = float(sim)
-            
-            # Calculate response length statistics
-            lengths = {model_id: len(response.split()) for model_id, response in responses.items()}
+
+            # Lengths of all valid responses
+            lengths = {model_id: len(resp.split()) for model_id, resp in valid_responses.items()}
             avg_length = sum(lengths.values()) / len(lengths)
-            
-            # Calculate sentiment and emotional tones
+
+            # Sentiment & emotional tone
             sentiment_analysis = {}
-            for model_id, response in responses.items():
+            for model_id, response in valid_responses.items():
                 sentiment_analysis[model_id] = await asyncio.to_thread(self.client.analyze_sentiment, response)
-            
-            # Calculate overall agreement score (average pairwise similarity)
+
+            # Consensus score = average of all pairwise similarities
             agreement_scores = []
             for model, sims in similarity_matrix.items():
-                if sims:  # Check if the model has similarity scores
+                if sims:
                     agreement_scores.extend(sims.values())
-            
-            consensus_score = sum(agreement_scores) / len(agreement_scores) if agreement_scores else 0
-            
-            # Generate similarity heatmap
+            consensus_score = sum(agreement_scores) / len(agreement_scores) if agreement_scores else 1.0
+
+            # Generate plots
             similarity_df = pd.DataFrame(similarity_matrix).fillna(1.0)
             heatmap_img = await asyncio.to_thread(self._generate_heatmap, similarity_df)
-            
-            # Generate emotion comparison chart
             emotion_img = await asyncio.to_thread(self._generate_emotion_chart, sentiment_analysis)
-            
-            # Generate polarity comparison chart
             polarity_img = await asyncio.to_thread(self._generate_polarity_chart, sentiment_analysis)
-            
-            # Generate radar chart
-            radar_img = await asyncio.to_thread(self._generate_radar_chart, responses, sentiment_analysis, lengths)
-            
+            radar_img = await asyncio.to_thread(self._generate_radar_chart, valid_responses, sentiment_analysis, lengths)
+
             return {
                 "similarity_matrix": similarity_matrix,
                 "response_lengths": lengths,
@@ -487,10 +692,11 @@ class ResponseAggregator:
                 "polarity_chart": self._image_to_base64(polarity_img),
                 "radar_chart": self._image_to_base64(radar_img)
             }
-            
+
         except Exception as e:
             logger.error(f"Error in analysis: {str(e)}")
             return {"error": f"Analysis failed: {str(e)}"}
+
     
     def _image_to_base64(self, img: Image.Image) -> str:
         """Convert PIL image to base64 string"""
@@ -686,8 +892,51 @@ openrouter_client = OpenRouterClient(
     site_name=SITE_NAME
 )
 
+# Agent health tracking
+agent_health = {model_id: {
+    "status": "healthy",
+    "last_heartbeat": datetime.now() + timedelta(minutes=3),  # Give 5 min grace period on startup
+    "failures": 0,
+    "retries": 0,
+    "has_processed_request": False
+} for model_id in MODELS.keys()}
+
 # Initialize the ResponseAggregator
 response_aggregator = ResponseAggregator(openrouter_client)
+
+async def update_agent_heartbeat(model_id):
+    """Update last heartbeat time for an agent"""
+    if model_id in agent_health:
+        agent_health[model_id]["last_heartbeat"] = datetime.now()
+        agent_health[model_id]["status"] = "healthy"
+        agent_health[model_id]["has_processed_request"] = True  # Mark as having processed a request
+
+async def check_agent_health():
+    """Check health of all agents and mark failed ones"""
+    now = datetime.now()
+    
+    # If any job is active/processing, refresh all heartbeats
+    active_processing = any(job["status"] == "processing" for job in active_jobs.values())
+    for model_id, health in agent_health.items():
+        if health["status"] != "failed":
+            await update_agent_heartbeat(model_id)
+      
+    for model_id, health in agent_health.items():
+        if health["status"] != "failed":
+            time_since_heartbeat = (now - health["last_heartbeat"]).total_seconds()
+            # Only mark as unhealthy if it's been significantly longer than the timeout
+            if time_since_heartbeat > HEALTH_TIMEOUT * 2:
+                logger.warning(f"Agent {model_id} appears to be down - no heartbeat for {time_since_heartbeat}s")
+                agent_health[model_id]["status"] = "unhealthy"
+
+async def reset_failed_agent(model_id):
+    """Reset a failed agent's status"""
+    if model_id in agent_health:
+        agent_health[model_id]["status"] = "healthy"
+        agent_health[model_id]["last_heartbeat"] = datetime.now()
+        agent_health[model_id]["failures"] = 0
+        agent_health[model_id]["retries"] = 0
+        logger.info(f"Agent {model_id} has been reset")
 
 # API endpoints
 @app.get("/")
@@ -723,7 +972,6 @@ async def api_fill_query_and_type(request: FillQueryRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# Add new endpoints to server.py
 @app.get("/history")
 async def api_get_history(limit: int = 50):
     """Get interaction history"""
@@ -751,6 +999,10 @@ async def api_delete_history_item(job_id: str):
 async def api_process_query(request: QueryRequest, background_tasks: BackgroundTasks):
     """Process a query with all models and return results"""
     try:
+        # Update all agent heartbeats at the start of any query
+        for model_id in MODELS.keys():
+            await update_agent_heartbeat(model_id)
+
         # Update API key if provided
         if request.api_key:
             openrouter_client.api_key = request.api_key
@@ -832,6 +1084,7 @@ async def api_job_result(job_id: str):
             "consensus_score": consensus_score,
             "query": result["query"],
             "question_type": result.get("question_type", "None"),
+            "domain": result.get("domain", "Custom"),
             "aggregator_id": aggregator_id
         }
     }
@@ -879,12 +1132,20 @@ async def process_query_background(job_id: str, query: str, question_type: str, 
 
         # Update progress
         active_jobs[job_id]["progress"] = 10
+
+        # Update all agent heartbeats before processing
+        for model_id in MODELS.keys():
+            await update_agent_heartbeat(model_id)
         
         active_jobs[job_id]["progress"] = 30
 
         # Process the query
         result = await response_aggregator.process_query(query, question_type)
         
+        # Update all agent heartbeats after processing
+        for model_id in MODELS.keys():
+            await update_agent_heartbeat(model_id)
+
         active_jobs[job_id]["progress"] = 60
 
         # Update progress
@@ -892,10 +1153,24 @@ async def process_query_background(job_id: str, query: str, question_type: str, 
         
         # Extract model responses
         responses = result["responses"]
+        aggregator_id = result.get("aggregator_id")
+
+        agg_response = responses.get(aggregator_id, "").strip().lower()
+        if (
+            agg_response.startswith("error") or
+            agg_response.startswith("could not generate")
+            or "all models failed" in agg_response
+        ):
+            logger.warning(f"Aggregator failed. Skipping DB save for job {job_id}.")
+            active_jobs[job_id] = {
+                "status": "error",
+                "error": "Aggregator did not produce a valid response."
+            }
+            return
+
         analysis = result["analysis"]
         
         # Get aggregator and non-aggregator models
-        aggregator_id = result.get("aggregator_id")
         non_aggregator_models = [model_id for model_id, config in MODELS.items() 
                                 if not config.get('aggregator', False)]
         
@@ -903,16 +1178,7 @@ async def process_query_background(job_id: str, query: str, question_type: str, 
         model_responses = {
             model_id: responses.get(model_id, "Error: Model failed to respond")
             for model_id in MODELS.keys()
-        }
-
-        # Check if any response failed
-        if any(resp.startswith("Error") for resp in model_responses.values()):
-            logger.warning(f"Skipping DB save for job {job_id} due to errors in model responses.")
-            active_jobs[job_id] = {
-                "status": "error",
-                "error": "One or more model responses failed"
-            }
-            return  # Stop here, do NOT save to database
+        } 
 
         # All models succeeded, safe to save
         db_manager.save_responses(job_id, model_responses, aggregator_id)
@@ -989,6 +1255,49 @@ async def api_get_question_types():
 async def api_get_examples():
     """Get all example queries"""
     return {"examples": EXAMPLES_BY_DOMAIN}
+
+@app.get("/agent_health")
+async def api_agent_health():
+    """Get the health status of all agents"""
+    await check_agent_health()
+    
+    # Format the response
+    health_status = {}
+    for model_id, health in agent_health.items():
+        last_heartbeat_str = health["last_heartbeat"].strftime("%Y-%m-%d %H:%M:%S")
+        time_since = (datetime.now() - health["last_heartbeat"]).total_seconds()
+        
+        health_status[model_id] = {
+            "status": health["status"],
+            "last_heartbeat": last_heartbeat_str,
+            "seconds_since_heartbeat": round(time_since, 1),
+            "failures": health["failures"],
+            "retries": health["retries"]
+        }
+    
+    return health_status
+
+# Add reset endpoint
+@app.post("/reset_agent/{model_id}")
+async def api_reset_agent(model_id: str):
+    """Reset a failed agent"""
+    if model_id not in agent_health:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    
+    await reset_failed_agent(model_id)
+    return {"status": "success", "message": f"Agent {model_id} has been reset"}
+
+# Add background task to periodically check agent health
+@app.on_event("startup")
+async def start_health_checker():
+    """Start background task for health checking"""
+    async def health_check_task():
+        while True:
+            await check_agent_health()
+            await asyncio.sleep(HEALTH_CHECK_INTERVAL)
+    
+    # Start the background task
+    asyncio.create_task(health_check_task())
 
 # Main entry point
 if __name__ == "__main__":

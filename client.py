@@ -124,13 +124,11 @@ def fill_query_and_type(selected_example, domain):
         logger.error(f"Error filling query and type: {str(e)}")
         return "", "None"
 
-
 def update_output_labels(aggregator_id):
-    """Update the output labels based on the selected aggregator"""
+    """Update the output labels based on the actual aggregator used in the last query"""
     global model_info
 
     try:
-        # Re-fetch model info from backend to get updated aggregator flags
         response = requests.get(f"{BACKEND_URL}/models")
         if response.status_code == 200:
             model_info = response.json()
@@ -141,21 +139,35 @@ def update_output_labels(aggregator_id):
         logger.error(f"Error refreshing models: {str(e)}")
         return {}
 
-    # Get non-aggregator model IDs
-    non_aggregator_models = [model_id for model_id, info in model_info.items() 
-                             if not info.get("aggregator", False)]
+    # Always build fresh label based on actual aggregator used
+    base_name = model_info.get(aggregator_id, {}).get("name", aggregator_id)
+    short_name = base_name.split("/")[-1].split(":")[0].replace("-instruct", "").replace("-", " ").title()
 
-    # Update model labels
-    if aggregator_id in model_info and len(non_aggregator_models) >= 3:
-        return {
-            output_aggregator: gr.update(label=model_info[aggregator_id]["display_name"]),
-            output_model1: gr.update(label=model_info[non_aggregator_models[0]]["display_name"]),
-            output_model2: gr.update(label=model_info[non_aggregator_models[1]]["display_name"]),
-            output_model3: gr.update(label=model_info[non_aggregator_models[2]]["display_name"]),
-        }
+    # Label aggregator correctly
+    if model_info.get(aggregator_id, {}).get("aggregator", False):
+        agg_label = f"{short_name} (Aggregator)"
     else:
-        return {}
+        agg_label = f"{short_name} (Fallback Aggregator)"
 
+    # List other agent models, excluding the actual aggregator
+    non_aggregator_models = [mid for mid in model_info if mid != aggregator_id]
+
+    agent_labels = []
+    for i in range(3):
+        if i < len(non_aggregator_models):
+            model_id = non_aggregator_models[i]
+            base_name = model_info[model_id]["name"]
+            short_name = base_name.split("/")[-1].split(":")[0].replace("-instruct", "").replace("-", " ").title()
+            agent_labels.append(short_name)
+        else:
+            agent_labels.append("Agent Not Available")
+
+    return {
+        output_aggregator: gr.update(label=agg_label),
+        output_model1: gr.update(label=agent_labels[0]),
+        output_model2: gr.update(label=agent_labels[1]),
+        output_model3: gr.update(label=agent_labels[2]),
+    }
 
 def process_query(query, api_key, question_type, domain, aggregator_id, progress=gr.Progress()):
     """Process a query and wait for results"""
@@ -165,12 +177,25 @@ def process_query(query, api_key, question_type, domain, aggregator_id, progress
     # Check for required inputs
     if not api_key:
         return [
-            "Error: OpenRouter API key is required", "", "", "", 0, None, None, None, None
+            "Error: OpenRouter API key is required", "", "", "", 0,
+            None, None, None, None,
+            gr.update(value="", visible=False),
+            gr.update(label="Aggregator"),
+            gr.update(label="Model 1"),
+            gr.update(label="Model 2"),
+            gr.update(label="Model 3")
         ]
+
 
     if not query.strip():
         return [
-            "Please enter a query", "", "", "", 0, None, None, None, None
+            "Please enter a query", "", "", "", 0,
+            None, None, None, None,
+            gr.update(value="", visible=False),
+            gr.update(label="Aggregator"),
+            gr.update(label="Model 1"),
+            gr.update(label="Model 2"),
+            gr.update(label="Model 3")
         ]
 
     try:
@@ -226,9 +251,14 @@ def process_query(query, api_key, question_type, domain, aggregator_id, progress
             progress(0.1 + (current_progress / 100) * 0.8, desc=f"Processing... {current_progress}%")
 
         if status != "completed":
-            logger.error(f"Job did not complete successfully: {status}")
             return [
-                "Error: Backend processing timed out or failed", "", "", "", 0, None, None, None, None
+                "Error: Backend processing timed out or failed", "", "", "", 0,
+                None, None, None, None,
+                gr.update(value="", visible=False),  # plot warning
+                gr.update(label="Aggregator"),
+                gr.update(label="Model 1"),
+                gr.update(label="Model 2"),
+                gr.update(label="Model 3")
             ]
 
         # Get job result
@@ -245,8 +275,25 @@ def process_query(query, api_key, question_type, domain, aggregator_id, progress
         result = result_response.json()
         responses = result.get("responses", {})
         analysis = result.get("analysis", {})
+        warning_msg = analysis.get("warning", "")
         consensus_score = result.get("consensus_score", 0)
         aggregator_id = result.get("aggregator_id")
+        label_updates = update_output_labels(aggregator_id)
+
+        # Get non-aggregator agents from the response
+        agent_ids = [mid for mid in responses.keys() if mid != aggregator_id]
+        agent_boxes = []
+
+        # Prepare 3 output boxes: either real response or fallback text
+        for i in range(3):
+            if i < len(agent_ids):
+                agent_id = agent_ids[i]
+                response_text = responses.get(agent_id, f"No response from {agent_id}")
+                label = model_info.get(agent_id, {}).get("display_name", agent_id)
+            else:
+                response_text = "No agent available"
+                label = "Agent Not Available"
+            agent_boxes.append((label, response_text))
 
         # Get non-aggregator models
         non_aggregator_models = [model_id for model_id, info in model_info.items()
@@ -276,15 +323,21 @@ def process_query(query, api_key, question_type, domain, aggregator_id, progress
 
         return [
             responses.get(aggregator_id, "Error: Aggregator model failed to respond"),
-            responses.get(non_aggregator_models[0], "Error: Model failed to respond") if len(non_aggregator_models) > 0 else "",
-            responses.get(non_aggregator_models[1], "Error: Model failed to respond") if len(non_aggregator_models) > 1 else "",
-            responses.get(non_aggregator_models[2], "Error: Model failed to respond") if len(non_aggregator_models) > 2 else "",
+            agent_boxes[0][1],
+            agent_boxes[1][1],
+            agent_boxes[2][1],
             consensus_score,
             heatmap_url if "error" not in analysis else None,
             emotion_url if "error" not in analysis else None,
             polarity_url if "error" not in analysis else None,
-            radar_url if "error" not in analysis else None
+            radar_url if "error" not in analysis else None,
+            gr.update(value=warning_msg, visible=bool(warning_msg)),
+            label_updates[output_aggregator],
+            label_updates[output_model1],
+            label_updates[output_model2],
+            label_updates[output_model3],
         ]
+
 
     except Exception as e:
         logger.error(f"Error processing query: {str(e)}")
@@ -297,7 +350,8 @@ def create_gradio_interface():
     """Create the Gradio interface"""
     global output_aggregator, output_model1, output_model2, output_model3, consensus_score
     global output_heatmap, output_emotion, output_polarity, output_radar
-    
+    global plot_warning_box
+
     # Initialize client
     init_success = init_client()
     if not init_success:
@@ -326,7 +380,7 @@ def create_gradio_interface():
                 )
                 
                 # Add connection test button
-                with gr.Row():
+                with gr.Column():
                     connect_button = gr.Button("Test Connection")
                     connection_status = gr.Textbox(label="Connection Status", interactive=False)
                 
@@ -405,6 +459,8 @@ def create_gradio_interface():
                     )
             
             with gr.TabItem("Analysis Visualizations"):
+                with gr.Row():
+                    plot_warning_box = gr.Markdown("", visible=False)
                 with gr.Row():
                     with gr.Column():
                         consensus_score = gr.Slider(
@@ -520,7 +576,7 @@ def create_gradio_interface():
                 # Load selected row
                 def load_selected_row(row_idx, job_ids):
                     if row_idx < 0 or row_idx >= len(job_ids):
-                        return [None] * 12
+                        return [None] * 14  # Include aggregator_radio in the count (now 14 total outputs)
                     
                     try:
                         job_id = job_ids[row_idx]
@@ -530,8 +586,7 @@ def create_gradio_interface():
                         
                         if result_response.status_code == 404:
                             logger.warning(f"Job {job_id} not found. It may have been deleted.")
-                            # Return empty values but don't refresh to avoid UI disruption
-                            return ["Job not found - refresh history", "", "", "", "", "", "", 0, None, None, None, None]
+                            return ["Job not found - refresh history", gr.update(value="Custom"), gr.update(value="None"), None, "", "", "", "", 0, None, None, None, None, gr.update(value=None)]
 
                         if result_response.status_code == 200:
                             result = result_response.json()
@@ -550,7 +605,7 @@ def create_gradio_interface():
                             query = result.get("query", "")
                             domain = result.get("domain", "Custom")
                             q_type = result.get("question_type", "None")
-                            
+
                             # Define fetch_image function locally if not already defined
                             def fetch_image(url):
                                 try:
@@ -563,7 +618,10 @@ def create_gradio_interface():
                             
                             # Prepare return values
                             return [
-                                query, domain, q_type,
+                                gr.update(value=query), 
+                                domain,  # Force domain update using gr.update()
+                                q_type,  # Force question type update
+                                None,  # Clear example dropdown
                                 responses.get(aggregator_id, ""),
                                 responses.get(non_aggregator_models[0], "") if len(non_aggregator_models) > 0 else "",
                                 responses.get(non_aggregator_models[1], "") if len(non_aggregator_models) > 1 else "",
@@ -572,19 +630,20 @@ def create_gradio_interface():
                                 fetch_image(f"{BACKEND_URL}/image/{job_id}/heatmap"),
                                 fetch_image(f"{BACKEND_URL}/image/{job_id}/emotion_chart"),
                                 fetch_image(f"{BACKEND_URL}/image/{job_id}/polarity_chart"),
-                                fetch_image(f"{BACKEND_URL}/image/{job_id}/radar_chart")
+                                fetch_image(f"{BACKEND_URL}/image/{job_id}/radar_chart"),  # Re-added radar chart
+                                aggregator_id  # Force aggregator update
                             ]
                         elif result_response.status_code == 404:
                             logger.warning(f"Job {job_id} not found. It may have been deleted.")
                             # Refresh the history to remove stale entries
                             refresh_history()
-                            return [None] * 12
+                            return [None] * 14
                         else:
                             logger.error(f"Failed to fetch job {job_id}: {result_response.status_code}")
-                            return [None] * 12
+                            return [None] * 14
                     except Exception as e:
                         logger.error(f"Error loading job: {str(e)}")
-                        return [None] * 12
+                        return [None] * 14
                 
                 # Delete selected row
                 def delete_selected_row(row_idx, job_ids):
@@ -613,9 +672,10 @@ def create_gradio_interface():
                     fn=load_selected_row,
                     inputs=[selected_row_idx, history_job_ids],
                     outputs=[
-                        input_query, domain_radio, question_type,
+                        input_query, domain_radio, question_type, example_selector,
                         output_aggregator, output_model1, output_model2, output_model3,
-                        consensus_score, output_heatmap, output_emotion, output_polarity, output_radar
+                        consensus_score, output_heatmap, output_emotion, output_polarity,
+                        output_radar, aggregator_radio
                     ]
                 )
                 
@@ -701,15 +761,21 @@ def create_gradio_interface():
             inputs=[input_query, api_key_input, question_type, domain_radio, aggregator_radio],
             outputs=[
                 output_aggregator,
-                output_model1, 
-                output_model2, 
+                output_model1,
+                output_model2,
                 output_model3,
                 consensus_score,
                 output_heatmap,
                 output_emotion,
                 output_polarity,
-                output_radar
+                output_radar,
+                plot_warning_box,
+                output_aggregator,
+                output_model1,
+                output_model2,
+                output_model3
             ]
+
         )
                     
     return app
