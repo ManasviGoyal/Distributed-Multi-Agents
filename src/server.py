@@ -161,8 +161,29 @@ db_manager = DatabaseManager()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """
+    Handles the lifespan events of the FastAPI application.
+    This function is a generator that manages the startup and shutdown
+    events of the application. During startup, it initializes a background
+    task to periodically check the health of agents. The background task
+    runs indefinitely at a specified interval.
+    Args:
+        app (FastAPI): The FastAPI application instance.
+    Yields:
+        None: Control is passed to the application after startup tasks are initialized.
+    """
     # Startup code
     async def health_check_task():
+        """
+        An asynchronous task that periodically checks the health of agents.
+
+        This function runs in an infinite loop, invoking the `check_agent_health` 
+        function to assess the status of agents and then sleeping for a duration 
+        specified by the `HEALTH_CHECK_INTERVAL` constant.
+
+        Returns:
+            None
+        """
         while True:
             await check_agent_health()
             await asyncio.sleep(HEALTH_CHECK_INTERVAL)
@@ -188,6 +209,17 @@ active_jobs = {}
 
 # Define request models for API
 class QueryRequest(BaseModel):
+    """
+    QueryRequest is a data model representing the structure of a query request.
+
+    Attributes:
+        query (str): The query string provided by the user.
+        api_key (str, optional): An optional API key for authentication. Defaults to None.
+        question_type (str): The type of question being asked. Defaults to "None".
+        domain (str): The domain or context of the query. Defaults to "None".
+        aggregator_id (str, optional): An optional identifier for the aggregator. Defaults to None.
+        username (str): The username of the individual making the query.
+    """
     query: str
     api_key: str = None
     question_type: str = "None"
@@ -196,17 +228,75 @@ class QueryRequest(BaseModel):
     username: str
 
 class AggregatorRequest(BaseModel):
+    """
+    Represents a request model for an aggregator.
+
+    Attributes:
+        aggregator_id (str): A unique identifier for the aggregator.
+    """
     aggregator_id: str
 
 class ExampleRequest(BaseModel):
+    """
+    ExampleRequest is a data model representing a request structure.
+
+    Attributes:
+        domain (str): The domain name or identifier associated with the request.
+    """
     domain: str
 
 class FillQueryRequest(BaseModel):
+    """
+    FillQueryRequest is a data model representing a request to fill a query.
+
+    Attributes:
+        selected_example (str): The selected example to be used in the query.
+        domain (str): The domain or context in which the query is being executed.
+    """
     selected_example: str
     domain: str
 
 class OpenRouterClient:
+    """
+    OpenRouterClient is a class designed to interact with the OpenRouter API for generating responses,
+    analyzing text embeddings, and performing sentiment and emotional tone analysis.
+    Attributes:
+        api_key (str): The API key used for authenticating with the OpenRouter API.
+        site_url (str, optional): The URL of the site making the request, used for HTTP-Referer header.
+        site_name (str, optional): The name of the site making the request, used for X-Title header.
+        url (str): The endpoint URL for the OpenRouter API.
+        sentence_encoder (SentenceTransformer): A pre-trained model for generating text embeddings.
+        sentiment_analyzer (SentimentIntensityAnalyzer): A VADER sentiment analyzer for sentiment analysis.
+    Methods:
+        generate_response(model_name: str, prompt: str, temperature: float = 0.7) -> str:
+            Asynchronously generates a response from a specified model via the OpenRouter API.
+            Includes fault tolerance and error handling for API failures.
+        get_embeddings(texts: List[str]) -> np.ndarray:
+            Generates embeddings for a list of input texts using a pre-trained sentence transformer.
+        analyze_emotional_tones(text: str) -> Dict[str, float]:
+            Analyzes emotional tones in the input text using pattern matching and sentiment analysis.
+            Returns a dictionary of emotional tone scores.
+        analyze_sentiment(text: str) -> Dict[str, Any]:
+            Analyzes the sentiment of the input text using VADER and TextBlob.
+            Returns a dictionary containing polarity, compound score, subjectivity, and emotional tones.
+    """
     def __init__(self, api_key, site_url=None, site_name=None):
+        """
+        Initializes the server with the provided API key, optional site URL, and site name.
+        
+        Args:
+            api_key (str): The API key used for authentication.
+            site_url (str, optional): The URL of the site. Defaults to None.
+            site_name (str, optional): The name of the site. Defaults to None.
+        
+        Attributes:
+            api_key (str): Stores the provided API key.
+            site_url (str): Stores the provided site URL.
+            site_name (str): Stores the provided site name.
+            url (str): The endpoint URL for chat completions.
+            sentence_encoder (SentenceTransformer): An instance of SentenceTransformer for encoding sentences.
+            sentiment_analyzer (SentimentIntensityAnalyzer): An instance of SentimentIntensityAnalyzer for sentiment analysis.
+        """
         self.api_key = api_key
         self.site_url = site_url
         self.site_name = site_name
@@ -215,7 +305,19 @@ class OpenRouterClient:
         self.sentiment_analyzer = SentimentIntensityAnalyzer()
     
     async def generate_response(self, model_name: str, prompt: str, temperature: float = 0.7) -> str:
-        """Generate a response from a specific model via OpenRouter API with fault tolerance"""
+        """
+        Asynchronously generates a response from a specified model based on the given prompt.
+        Args:
+            model_name (str): The name of the model to use for generating the response.
+            prompt (str): The input prompt to send to the model.
+            temperature (float, optional): The sampling temperature for the model's response. 
+                Defaults to 0.7.
+        Returns:
+            str: The generated response from the model, or an error message if the operation fails.
+        Raises:
+            asyncio.TimeoutError: If the API request times out.
+            Exception: For any other unexpected errors during the process.
+        """
         # Get model ID from model name
         model_id = next((mid for mid, config in MODELS.items() if config['name'] == model_name), None)
         
@@ -317,11 +419,33 @@ class OpenRouterClient:
             return f"Error with {model_id}: {str(e)}"
         
     def get_embeddings(self, texts: List[str]) -> np.ndarray:
-        """Get embeddings for a list of texts"""
+        """
+        Generate embeddings for a list of input texts.
+
+        Args:
+            texts (List[str]): A list of strings for which embeddings are to be generated.
+
+        Returns:
+            np.ndarray: A NumPy array containing the embeddings for the input texts.
+        """
         return self.sentence_encoder.encode(texts)
     
     def analyze_emotional_tones(self, text: str) -> Dict[str, float]:
-        """Analyze emotional tones using prompt-based pattern matching"""
+        """
+        Analyze the emotional tones present in a given text.
+        This method uses predefined patterns and sentiment analysis to detect 
+        and score various emotional tones in the input text. The tones include 
+        Empathetic, Judgmental, Analytical, Ambivalent, Defensive, and Curious.
+        The scoring is based on:
+        - Pattern matching for specific keywords or phrases associated with each tone.
+        - Sentiment analysis using VADER to adjust scores for certain tones.
+        The final scores are normalized to ensure they sum to 1.
+        Args:
+            text (str): The input text to analyze.
+        Returns:
+            Dict[str, float]: A dictionary where keys are emotional tone names 
+            and values are their respective normalized scores (between 0 and 1).
+        """
         # Basic patterns for emotional tone detection
         patterns = {
             "Empathetic": [
@@ -394,7 +518,19 @@ class OpenRouterClient:
         return scores
     
     def analyze_sentiment(self, text: str) -> Dict[str, Any]:
-        """Analyze sentiment of text"""
+        """
+        Analyzes the sentiment of the given text using multiple sentiment analysis tools.
+        This method combines VADER sentiment analysis, TextBlob sentiment analysis, 
+        and an emotional tone analysis to provide a comprehensive sentiment evaluation.
+        Args:
+            text (str): The input text to analyze.
+        Returns:
+            Dict[str, Any]: A dictionary containing the following keys:
+                - 'polarity' (float): The polarity score from TextBlob (-1.0 to 1.0).
+                - 'compound' (float): The compound sentiment score from VADER (-1.0 to 1.0).
+                - 'subjectivity' (float): The subjectivity score from TextBlob (0.0 to 1.0).
+                - 'emotional_tones' (Any): The result of the emotional tone analysis.
+        """
         # VADER sentiment analysis
         sentiment_scores = self.sentiment_analyzer.polarity_scores(text)
         
@@ -413,13 +549,45 @@ class OpenRouterClient:
             'emotional_tones': emotional_tones
         }
 
-# Response Aggregator class
 class ResponseAggregator:
+    """
+    This class is responsible for processing queries through multiple AI models, aggregating their responses, 
+    and generating a consensus summary. It also provides analysis of the responses, including sentiment, 
+    similarity, and visualization of key metrics.
+    Attributes:
+        client (Any): The client used to interact with AI models for generating responses.
+    """
     def __init__(self, openrouter_client):
+        """
+        Initializes the server with the given OpenRouter client.
+
+        Args:
+            openrouter_client: An instance of the OpenRouter client used for communication.
+        """
         self.client = openrouter_client
     
     async def process_query(self, query: str, question_type: str = "none") -> Dict[str, Any]:
-        """Process query through all models and aggregate results with fault tolerance and failover"""
+        """
+        Process a query through multiple agent models, aggregate their responses, and provide a consensus summary.
+        This method performs the following steps:
+        1. Formats the query based on the specified question type.
+        2. Checks the health of agent models and selects up to three healthy models for processing.
+        3. Sends the query to the selected models asynchronously and collects their responses.
+        4. Identifies an aggregator model to summarize the responses, with failover to backup models if necessary.
+        5. Generates a consensus summary using the aggregator model.
+        6. Analyzes the responses and returns the results.
+        Args:
+            query (str): The input query to process.
+            question_type (str, optional): The type of question, used to apply a prefix to the query. Defaults to "none".
+        Returns:
+            Dict[str, Any]: A dictionary containing the following keys:
+                - "query" (str): The original query.
+                - "formatted_query" (str): The query after applying the question type prefix.
+                - "responses" (Dict[str, Any]): The responses from the agent models.
+                - "analysis" (Any): Analysis of the responses.
+                - "consensus_summary" (str): The aggregated consensus summary.
+                - "aggregator_id" (str): The ID of the aggregator model used.
+        """
         model_responses = {}
         
         # Apply prefix based on question type
@@ -526,6 +694,15 @@ class ResponseAggregator:
 
             # Start fallback loop if the consensus was invalid
             def is_invalid_consensus(text):
+                """
+                Determines if the given text indicates an invalid consensus.
+
+                Args:
+                    text (str): The input text to evaluate.
+
+                Returns:
+                    bool: True if the text suggests an invalid consensus, otherwise False.
+                """
                 return (
                     text.startswith("Error") or
                     "invalid model id" in text.lower() or
@@ -580,7 +757,16 @@ class ResponseAggregator:
         }
     
     async def generate_consensus_summary(self, query: str, responses: Dict[str, str], aggregator_id: str) -> str:
-        """Generate a summarized consensus from all model responses using the aggregator model"""
+        """
+        Generate a summarized consensus from all model responses using the aggregator model.
+        Args:
+            query (str): The query or prompt that was provided to the models.
+            responses (Dict[str, str]): A dictionary mapping model IDs to their respective responses.
+            aggregator_id (str): The ID of the designated aggregator model.
+        Returns:
+            str: A comprehensive consensus summary generated by the aggregator model. If all models fail 
+                 or encounter errors, a fallback message is returned indicating the inability to generate a summary.
+        """
         # Check for errors
         agg_response = responses.get(aggregator_id, "").strip()
 
@@ -634,7 +820,37 @@ class ResponseAggregator:
         return f"SUMMARY\n\n{summary}"
     
     async def analyze_responses(self, query: str, responses: Dict[str, str]) -> Dict[str, Any]:
-        """Analyze the different model responses"""
+        """
+        Analyze the responses from different models and generate insights.
+
+        This method processes the responses from various models, performs sentiment analysis,
+        calculates similarity metrics, and generates visualizations to provide insights into
+        the responses. If there are fewer than two valid responses, it skips the visual analysis
+        and returns basic metrics with a warning.
+
+        Args:
+            query (str): The input query for which the responses were generated.
+            responses (Dict[str, str]): A dictionary where keys are model IDs and values are
+                the corresponding responses from the models.
+
+        Returns:
+            Dict[str, Any]: A dictionary containing the following keys:
+                - "similarity_matrix" (Optional[Dict[str, Dict[str, float]]]): Pairwise similarity
+                  scores between model responses.
+                - "response_lengths" (Dict[str, int]): Word counts of the valid responses.
+                - "avg_response_length" (Optional[float]): Average word count of the valid responses.
+                - "sentiment_analysis" (Dict[str, Any]): Sentiment analysis results for each response.
+                - "consensus_score" (float): Average pairwise similarity score between responses.
+                - "heatmap" (Optional[str]): Base64-encoded heatmap image of the similarity matrix.
+                - "emotion_chart" (Optional[str]): Base64-encoded emotion chart image.
+                - "polarity_chart" (Optional[str]): Base64-encoded polarity chart image.
+                - "radar_chart" (Optional[str]): Base64-encoded radar chart image.
+                - "warning" (Optional[str]): Warning message if visual analysis is skipped.
+                - "error" (Optional[str]): Error message if the analysis fails.
+
+        Raises:
+            Exception: If an error occurs during the analysis process.
+        """
         texts = []
         valid_responses = {}
 
@@ -722,14 +938,33 @@ class ResponseAggregator:
 
     
     def _image_to_base64(self, img: Image.Image) -> str:
-        """Convert PIL image to base64 string"""
+        """
+        Converts a PIL Image object to a Base64-encoded string.
+
+        Args:
+            img (Image.Image): The PIL Image object to be converted.
+
+        Returns:
+            str: A Base64-encoded string representation of the image, prefixed with
+                 "data:image/png;base64," to indicate the image format.
+        """
         buffer = io.BytesIO()
         img.save(buffer, format="PNG")
         img_str = base64.b64encode(buffer.getvalue()).decode('utf-8')
         return f"data:image/png;base64,{img_str}"
     
     def _generate_heatmap(self, df: pd.DataFrame) -> Image.Image:
-        """Generate a heatmap visualization of the similarity matrix"""
+        """
+        Generates a heatmap visualization from a given pandas DataFrame.
+        This method creates a heatmap using seaborn, with annotations and a color map
+        ranging from yellow to blue. The heatmap is saved to an in-memory buffer as a PNG
+        image and returned as a PIL Image object.
+        Args:
+            df (pd.DataFrame): The input DataFrame containing the data to be visualized
+                in the heatmap. The values should be normalized between 0 and 1.
+        Returns:
+            Image.Image: A PIL Image object containing the generated heatmap.
+        """
         plt.figure(figsize=(6, 5))
         sns.heatmap(df, annot=True, cmap="YlGnBu", vmin=0, vmax=1, fmt=".2f")
         plt.title("Response Similarity Matrix")
@@ -743,7 +978,16 @@ class ResponseAggregator:
         return Image.open(buf)
     
     def _generate_emotion_chart(self, sentiment_analysis: Dict[str, Dict]) -> Image.Image:
-        """Generate a stacked bar chart of emotional tones for each model"""
+        """
+        Generates a stacked bar chart visualizing emotional tone analysis for different models.
+        Args:
+            sentiment_analysis (Dict[str, Dict]): A dictionary where keys are model names and values 
+                are dictionaries containing emotional tone data under the key 'emotional_tones'.
+        Returns:
+            Image.Image: A PIL Image object containing the generated chart.
+        The chart displays the proportion of different emotional tones for each model as a stacked bar chart.
+        Emotional tones with proportions greater than 5% are labeled with their percentage values.
+        """
         # Extract emotion data
         emotions_data = {}
         for model, analysis in sentiment_analysis.items():
@@ -783,7 +1027,15 @@ class ResponseAggregator:
         return Image.open(buf)
     
     def _generate_polarity_chart(self, sentiment_analysis: Dict[str, Dict]) -> Image.Image:
-        """Generate a bar chart of sentiment polarity for each model using consistent colors"""
+        """
+        Generates a bar chart visualizing sentiment polarity scores for different models.
+        Args:
+            sentiment_analysis (Dict[str, Dict]): A dictionary where keys are model names and 
+                values are dictionaries containing sentiment analysis results, including a 
+                'compound' key representing the polarity score (-1 to +1).
+        Returns:
+            Image.Image: A PIL Image object containing the generated bar chart.
+        """
         # Extract polarity scores
         polarity_data = {model: analysis['compound'] for model, analysis in sentiment_analysis.items()}
         
@@ -822,7 +1074,20 @@ class ResponseAggregator:
     
     def _generate_radar_chart(self, responses: Dict[str, str], sentiment_analysis: Dict[str, Dict], 
                              lengths: Dict[str, int]) -> Image.Image:
-        """Generate a radar/spider chart comparing response features with consistent colors"""
+        """
+        Generate a radar/spider chart comparing response features with consistent colors.
+        Args:
+            responses (Dict[str, str]): A dictionary where keys are model names and values are their responses.
+            sentiment_analysis (Dict[str, Dict]): A dictionary containing sentiment analysis results for each model.
+                Each model's data should include:
+                - 'polarity': Sentiment polarity score (float, range [-1, 1]).
+                - 'subjectivity': Sentiment subjectivity score (float, range [0, 1]).
+                - 'emotional_tones': A dictionary with keys 'Analytical', 'Empathetic', and 'Curious', 
+                   representing emotional tone scores (float, range [0, 1]).
+            lengths (Dict[str, int]): A dictionary where keys are model names and values are the lengths of their responses.
+        Returns:
+            Image.Image: A PIL Image object containing the radar chart visualization.
+        """
         # Prepare data for radar chart
         models = list(responses.keys())
         
@@ -896,7 +1161,16 @@ class ResponseAggregator:
         return Image.open(buf)
 
 def update_aggregator(new_aggregator_id):
-    """Update the MODELS dictionary to mark the selected model as aggregator"""
+    """
+    Update the aggregator status in the MODELS dictionary.
+    This function resets the 'aggregator' status for all models in the MODELS 
+    dictionary and sets the 'aggregator' status to True for the model with the 
+    specified `new_aggregator_id`.
+    Args:
+        new_aggregator_id (str): The ID of the model to be set as the new aggregator.
+    Returns:
+        str: The ID of the model that was set as the new aggregator.
+    """
     # Reset all models' aggregator status
     for model_id in MODELS:
         if 'aggregator' in MODELS[model_id]:
@@ -928,14 +1202,37 @@ agent_health = {model_id: {
 response_aggregator = ResponseAggregator(openrouter_client)
 
 async def update_agent_heartbeat(model_id):
-    """Update last heartbeat time for an agent"""
+    """
+    Update the last heartbeat time and status for a specific agent.
+
+    This function updates the `last_heartbeat` timestamp, sets the agent's 
+    status to "healthy", and marks the agent as having processed a request 
+    in the `agent_health` dictionary.
+
+    Args:
+        model_id (str): The unique identifier of the agent whose heartbeat 
+                        information is being updated.
+
+    Raises:
+        KeyError: If the provided `model_id` is not found in the `agent_health` dictionary.
+    """
     if model_id in agent_health:
         agent_health[model_id]["last_heartbeat"] = datetime.now()
         agent_health[model_id]["status"] = "healthy"
         agent_health[model_id]["has_processed_request"] = True  # Mark as having processed a request
 
 async def check_agent_health():
-    """Check health of all agents and mark failed ones"""
+    """
+    Periodically checks the health of agents and updates their status based on heartbeat activity.
+    This function performs the following tasks:
+    1. Refreshes the heartbeat of all agents if any job is currently active or processing.
+    2. Checks the time elapsed since the last heartbeat for each agent and marks the agent as 
+       "unhealthy" if the elapsed time exceeds twice the defined health timeout.
+    Logs a warning if an agent is marked as "unhealthy" due to lack of heartbeat activity.
+
+    Raises:
+        Any exceptions raised by `update_agent_heartbeat` or other asynchronous operations.
+    """
     now = datetime.now()
     
     # If any job is active/processing, refresh all heartbeats
@@ -953,7 +1250,12 @@ async def check_agent_health():
                 agent_health[model_id]["status"] = "unhealthy"
 
 async def reset_failed_agent(model_id):
-    """Reset a failed agent's status"""
+    """
+    Reset the status of a failed agent to "healthy" and clear its failure and retry counts.
+
+    Args:
+        model_id (str): The unique identifier of the agent to reset.
+    """
     if model_id in agent_health:
         agent_health[model_id]["status"] = "healthy"
         agent_health[model_id]["last_heartbeat"] = datetime.now()
@@ -964,11 +1266,31 @@ async def reset_failed_agent(model_id):
 # API endpoints
 @app.get("/")
 async def root():
+    """
+    Handles the root endpoint of the server.
+
+    This asynchronous function returns a JSON response indicating that the 
+    Multi-Agent LLM Backend is operational.
+
+    Returns:
+        dict: A dictionary containing a message confirming the server's status.
+    """
     return {"message": "Multi-Agent LLM Backend is running"}
 
 @app.post("/update_aggregator")
 async def api_update_aggregator(request: AggregatorRequest):
-    """Update the aggregator model"""
+    """
+    Handles the API request to update an aggregator.
+
+    Args:
+        request (AggregatorRequest): The request object containing the aggregator ID to be updated.
+
+    Returns:
+        dict: A dictionary containing the success status and the updated aggregator ID.
+
+    Raises:
+        HTTPException: If an error occurs during the update process, an HTTP 500 error is raised with the error details.
+    """
     try:
         new_aggregator = update_aggregator(request.aggregator_id)
         return {"success": True, "aggregator_id": new_aggregator}
@@ -986,7 +1308,24 @@ async def api_get_example_choices(request: ExampleRequest):
 
 @app.post("/fill_query_and_type")
 async def api_fill_query_and_type(request: FillQueryRequest):
-    """Fill query and type from an example"""
+    """
+    Handles the API request to fill a query and its corresponding question type 
+    based on a selected example.
+
+    Args:
+        request (FillQueryRequest): The request object containing the domain 
+        and the selected example.
+
+    Returns:
+        dict: A dictionary containing:
+            - "query" (str): The query string from the selected example.
+            - "question_type" (str): The type of question associated with the query.
+              Returns "None" if no matching example is found.
+
+    Raises:
+        HTTPException: If an unexpected error occurs, returns a 500 status code 
+        with the error details.
+    """
     try:
         for example in EXAMPLES_BY_DOMAIN.get(request.domain, []):
             if example[0] == request.selected_example:
@@ -997,7 +1336,19 @@ async def api_fill_query_and_type(request: FillQueryRequest):
 
 @app.get("/history")
 async def api_get_history(username: str, limit: int = 50):
-    """Get interaction history"""
+    """
+    Fetches the interaction history for a specified user.
+
+    Args:
+        username (str): The username of the user whose interaction history is to be retrieved.
+        limit (int, optional): The maximum number of history records to retrieve. Defaults to 50.
+
+    Returns:
+        dict: A dictionary containing the user's interaction history under the key "history".
+
+    Raises:
+        HTTPException: If an error occurs while retrieving the history, an HTTP 500 error is raised with the error details.
+    """
     try:
         history = db_manager.get_user_history(username, limit)
         return {"history": history}
@@ -1007,7 +1358,19 @@ async def api_get_history(username: str, limit: int = 50):
 
 @app.delete("/history/{job_id}")
 async def api_delete_history_item(job_id: str, username: str):
-    """Delete an interaction from history"""
+    """
+    Delete an interaction from the user's history.
+
+    Args:
+        job_id (str): The unique identifier of the job or interaction to be deleted.
+        username (str): The username of the user whose interaction history is being modified.
+
+    Returns:
+        dict: A dictionary indicating the success of the operation with a key "success" set to True if the deletion was successful.
+
+    Raises:
+        HTTPException: If the deletion fails or an unexpected error occurs, an HTTPException is raised with a status code of 500 and an appropriate error message.
+    """
     try:
         success = db_manager.delete_interaction(job_id, username)
         if success:
@@ -1020,7 +1383,23 @@ async def api_delete_history_item(job_id: str, username: str):
 
 @app.post("/process_query")
 async def api_process_query(request: QueryRequest, background_tasks: BackgroundTasks):
-    """Process a query with all models and return results"""
+    """
+    Handles the processing of a query request asynchronously.
+    This function updates agent heartbeats, validates the API key and query,
+    applies domain prefixes if specified, updates the aggregator if provided,
+    and starts a background task to process the query.
+    Args:
+        request (QueryRequest): The query request object containing the query,
+                                API key, domain, question type, username, and
+                                optional aggregator ID.
+        background_tasks (BackgroundTasks): The background tasks manager to
+                                             schedule asynchronous tasks.
+    Returns:
+        dict: A dictionary containing the job ID and the processing status.
+              If there are validation errors, an error message is returned.
+    Raises:
+        HTTPException: If an unexpected error occurs during query processing.
+    """
     try:
         # Update all agent heartbeats at the start of any query
         for model_id in MODELS.keys():
@@ -1071,7 +1450,15 @@ async def api_process_query(request: QueryRequest, background_tasks: BackgroundT
 
 @app.get("/job_status/{job_id}")
 async def api_job_status(job_id: str):
-    """Get the status of a processing job"""
+    """
+    Retrieve the status of a specific job.
+    Args:
+        job_id (str): The unique identifier of the job.
+    Returns:
+        dict: The status information of the job if it exists in active_jobs.
+    Raises:
+        HTTPException: If the job_id is not found in active_jobs, a 404 error is raised.
+    """
     if job_id not in active_jobs:
         raise HTTPException(status_code=404, detail="Job not found")
     
@@ -1079,6 +1466,23 @@ async def api_job_status(job_id: str):
 
 @app.get("/job_result/{job_id}")
 async def api_job_result(job_id: str):
+    """
+    Retrieve the result of a job by its ID.
+
+    This function checks if the job is currently active and returns its status or result.
+    If the job is not active, it attempts to retrieve the job's result from the database.
+    If found, the job's data is rehydrated into the active jobs for further use.
+
+    Args:
+        job_id (str): The unique identifier of the job.
+
+    Returns:
+        dict: A dictionary containing the job's result, including responses, analysis,
+              consensus score, query, question type, domain, and aggregator ID.
+
+    Raises:
+        HTTPException: If the job is not found in both active jobs and the database.
+    """
     if job_id in active_jobs:
         job = active_jobs[job_id]
         if job["status"] != "completed":
@@ -1114,7 +1518,22 @@ async def api_job_result(job_id: str):
 
 @app.get("/image/{job_id}/{image_type}")
 async def api_get_image(job_id: str, image_type: str):
-    """Get an image from the job results"""
+    """
+    Retrieve a specific type of image associated with a completed job.
+    Args:
+        job_id (str): The unique identifier of the job.
+        image_type (str): The type of image to retrieve. 
+                          Valid options are "heatmap", "emotion_chart", 
+                          "polarity_chart", and "radar_chart".
+    Raises:
+        HTTPException: 
+            - 404: If the job ID is not found or the requested image is not available.
+            - 400: If the job is not completed, no analysis is available, 
+                   or the image type is invalid.
+    Returns:
+        StreamingResponse: A streaming response containing the requested image 
+                           in PNG format.
+    """
     if job_id not in active_jobs:
         raise HTTPException(status_code=404, detail="Job not found")
     
@@ -1143,7 +1562,18 @@ async def api_get_image(job_id: str, image_type: str):
         raise HTTPException(status_code=404, detail="Image not found")
 
 async def process_query_background(job_id: str, query: str, question_type: str, domain: str, username: str):
-    """Process a query in the background"""
+    """
+    Processes a query asynchronously in the background, updating job status and progress,
+    interacting with agents, aggregating responses, and saving results to the database.
+    Args:
+        job_id (str): A unique identifier for the job being processed.
+        query (str): The query string to be processed.
+        question_type (str): The type of question being asked (e.g., factual, analytical).
+        domain (str): The domain or context of the query.
+        username (str): The username of the user submitting the query.
+    Raises:
+        Exception: Captures and logs any errors that occur during processing.
+    """
     try:
         # Update job status
         active_jobs[job_id] = {
@@ -1234,7 +1664,21 @@ async def process_query_background(job_id: str, query: str, question_type: str, 
 
 @app.get("/models")
 async def api_get_models():
-    """Get the list of available models"""
+    """
+    Fetches the list of available models and their metadata.
+
+    This asynchronous function retrieves information about all available models,
+    including their name, whether they use an aggregator, their associated color,
+    and a formatted display name.
+
+    Returns:
+        dict: A dictionary where each key is a model ID and the value is another
+        dictionary containing the following keys:
+            - "name" (str): The name of the model.
+            - "aggregator" (bool): Indicates if the model uses an aggregator.
+            - "color" (str): The color associated with the model (default is "#95a5a6").
+            - "display_name" (str): A formatted display name for the model.
+    """
     model_info = {}
     for model_id, config in MODELS.items():
         model_info[model_id] = {
@@ -1246,7 +1690,17 @@ async def api_get_models():
     return model_info
 
 def format_model_name(model_id):
-    """Format model name for display"""
+    """
+    Formats the model name based on its configuration.
+    This function retrieves the model configuration using the provided `model_id`
+    from the `MODELS` dictionary. It extracts the model name from the path, removes
+    unnecessary formatting (e.g., version numbers and suffixes like "-instruct"),
+    capitalizes each word, and appends an "Aggregator" tag if applicable.
+    Args:
+        model_id (str): The identifier for the model in the `MODELS` dictionary.
+    Returns:
+        str: A human-readable, formatted model name.
+    """
     config = MODELS[model_id]
     name = config["name"]
     # Extract model name from path and make it pretty
@@ -1264,22 +1718,58 @@ def format_model_name(model_id):
 
 @app.get("/domains")
 async def api_get_domains():
-    """Get the list of available domains"""
+    """
+    Asynchronous function to retrieve a list of domains.
+
+    Returns:
+        dict: A dictionary containing the key "domains" mapped to the value of the global variable `DOMAINS`.
+    """
     return {"domains": DOMAINS}
 
 @app.get("/question_types")
 async def api_get_question_types():
-    """Get the list of available question types"""
+    """
+    Asynchronous function to retrieve available question types.
+
+    This function returns a dictionary containing a list of question types
+    derived from the keys of the `QUESTION_PREFIXES` dictionary, along with
+    an additional "None" option.
+
+    Returns:
+        dict: A dictionary with a single key "question_types", whose value
+        is a list of available question types.
+    """
     return {"question_types": list(QUESTION_PREFIXES.keys()) + ["None"]}
 
 @app.get("/examples")
 async def api_get_examples():
-    """Get all example queries"""
+    """
+    Asynchronous function to retrieve example data.
+
+    Returns:
+        dict: A dictionary containing examples categorized by domain.
+    """
     return {"examples": EXAMPLES_BY_DOMAIN}
 
 @app.get("/agent_health")
 async def api_agent_health():
-    """Get the health status of all agents"""
+    """
+    Asynchronously checks the health of agents and formats the health status response.
+    This function calls `check_agent_health()` to update the health status of agents.
+    It then processes the `agent_health` dictionary to create a formatted response
+    containing the health status of each agent, including the time since the last
+    heartbeat, the number of failures, and retries.
+    Returns:
+        dict: A dictionary where each key is a model ID and the value is another
+        dictionary containing:
+            - status (str): The current health status of the agent.
+            - last_heartbeat (str): The timestamp of the last heartbeat in the format
+              "YYYY-MM-DD HH:MM:SS".
+            - seconds_since_heartbeat (float): The number of seconds since the last
+              heartbeat.
+            - failures (int): The number of failures recorded for the agent.
+            - retries (int): The number of retries attempted for the agent.
+    """
     await check_agent_health()
     
     # Format the response
@@ -1301,7 +1791,16 @@ async def api_agent_health():
 # Add reset endpoint
 @app.post("/reset_agent/{model_id}")
 async def api_reset_agent(model_id: str):
-    """Reset a failed agent"""
+    """
+    Handles the API request to reset a specific agent by its model ID.
+    Args:
+        model_id (str): The unique identifier of the agent to be reset.
+    Raises:
+        HTTPException: If the specified agent is not found in the system.
+    Returns:
+        dict: A dictionary containing the status and a success message indicating
+              that the agent has been reset.
+    """
     if model_id not in agent_health:
         raise HTTPException(status_code=404, detail="Agent not found")
     

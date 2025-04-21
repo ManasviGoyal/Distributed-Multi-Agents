@@ -9,12 +9,47 @@ from typing import Dict, List, Any, Optional
 logger = logging.getLogger(__name__)
 
 class DatabaseManager:
+    """
+    DatabaseManager is a class responsible for managing interactions with an SQLite database.
+    It provides methods to initialize the database, store and retrieve data related to user interactions,
+    responses, and analysis, as well as manage user accounts.
+    Attributes:
+        db_path (str): The file path to the SQLite database.
+    """
     def __init__(self, db_path = os.path.join(os.path.dirname(__file__), "../agent_history.db")):
+        """
+        Initializes the DatabaseManager instance.
+
+        Args:
+            db_path (str): The file path to the database. Defaults to a path
+                pointing to "../agent_history.db" relative to the current file.
+
+        Attributes:
+            db_path (str): The file path to the database.
+
+        Calls:
+            initialize_db(): Sets up the database if it does not already exist.
+        """
         self.db_path = db_path
         self.initialize_db()
     
     def initialize_db(self):
-        """Initialize the SQLite database with necessary tables"""
+        """
+        Initializes the database by creating necessary tables if they do not already exist.
+        This method connects to the SQLite database specified by `self.db_path` and creates
+        the following tables:
+        1. `interactions`: Stores information about user interactions, including job ID, query,
+           domain, question type, timestamp, and username.
+        2. `responses`: Stores agent responses to user queries, including job ID, agent ID,
+           response text, whether the response is from an aggregator, and timestamp. It has
+           a foreign key relationship with the `interactions` table.
+        3. `analysis`: Stores analysis data for jobs, including consensus score, analysis data,
+           and timestamp. It has a foreign key relationship with the `interactions` table.
+        4. `users`: Stores user credentials, including a unique username and password.
+
+        Raises:
+            Exception: If there is an error during database initialization.
+        """
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
@@ -71,6 +106,14 @@ class DatabaseManager:
             logger.error(f"Error initializing database: {str(e)}")
     
     def get_user_history(self, username: str, limit: int = 50) -> List[Dict[str, Any]]:
+        """
+        Retrieves the interaction history of a specific user from the database.
+        Args:
+            username (str): The username of the user whose history is to be retrieved.
+            limit (int, optional): The maximum number of interactions to retrieve. Defaults to 50.
+        Returns:
+            List[Dict[str, Any]]: A list of dictionaries, where each dictionary represents an interaction.
+        """
         try:
             conn = sqlite3.connect(self.db_path)
             conn.row_factory = sqlite3.Row
@@ -105,7 +148,19 @@ class DatabaseManager:
             return []
 
     def save_interaction(self, job_id: str, query: str, domain: str, question_type: str, username: str) -> bool:
-        """Save a new interaction to the database"""
+        """
+        Saves an interaction record to the database.
+        Args:
+            job_id (str): The unique identifier for the job associated with the interaction.
+            query (str): The query or input provided during the interaction.
+            domain (str): The domain or category of the interaction.
+            question_type (str): The type of question or interaction being recorded.
+            username (str): The username of the individual associated with the interaction.
+        Returns:
+            bool: True if the interaction was successfully saved, False otherwise.
+        Raises:
+            Exception: Logs an error message if an exception occurs during the database operation.
+        """
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
@@ -125,7 +180,17 @@ class DatabaseManager:
             return False
     
     def save_responses(self, job_id: str, responses: Dict[str, str], aggregator_id: Optional[str] = None) -> bool:
-        """Save model responses to the database"""
+        """
+        Saves agent responses to the database for a specific job.
+        Args:
+            job_id (str): The unique identifier for the job.
+            responses (Dict[str, str]): A dictionary mapping agent IDs to their responses.
+            aggregator_id (Optional[str]): The ID of the aggregator agent, if any. Defaults to None.
+        Returns:
+            bool: True if the responses were successfully saved, False otherwise.
+        Raises:
+            Exception: Logs an error message if an exception occurs during the database operation.
+        """
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
@@ -147,7 +212,17 @@ class DatabaseManager:
             return False
     
     def save_analysis(self, job_id: str, consensus_score: float, analysis_data: Dict[str, Any]) -> bool:
-        """Save analysis results to the database"""
+        """
+        Saves the analysis data for a specific job into the database.
+        Args:
+            job_id (str): The unique identifier for the job.
+            consensus_score (float): The consensus score associated with the analysis.
+            analysis_data (Dict[str, Any]): A dictionary containing the analysis data to be saved.
+        Returns:
+            bool: True if the analysis data was successfully saved, False otherwise.
+        Raises:
+            Exception: Logs any exception that occurs during the database operation.
+        """
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
@@ -170,7 +245,13 @@ class DatabaseManager:
             return False
     
     def get_interaction_history(self, limit: int = 50) -> List[Dict[str, Any]]:
-        """Get the interaction history with associated responses"""
+        """
+        Retrieves the interaction history from the database, including associated responses.
+        Args:
+            limit (int): The maximum number of interactions to retrieve. Defaults to 50.
+        Returns:
+            List[Dict[str, Any]]: A list of dictionaries, where each dictionary represents an interaction.
+        """
         try:
             conn = sqlite3.connect(self.db_path)
             conn.row_factory = sqlite3.Row
@@ -210,7 +291,16 @@ class DatabaseManager:
             return []
     
     def get_interaction(self, job_id: str) -> Optional[Dict[str, Any]]:
-        """Get a specific interaction by job_id"""
+        """
+        Retrieves interaction details from the database for a given job ID.
+        Args:
+            job_id (str): The unique identifier for the job whose interaction details are to be retrieved.
+        Returns:
+            Optional[Dict[str, Any]]: A dictionary containing the interaction details if found, or None if no interaction
+            exists for the given job ID.
+        Raises:
+            Logs an error and returns None if an exception occurs during database operations.
+        """
         try:
             conn = sqlite3.connect(self.db_path)
             conn.row_factory = sqlite3.Row
@@ -263,7 +353,20 @@ class DatabaseManager:
             return None
     
     def delete_interaction(self, job_id: str, username: str) -> bool:
-        """Delete an interaction and its associated data"""
+        """
+        Deletes an interaction and its associated data from the database.
+        This method removes entries from the `responses`, `analysis`, and `interactions`
+        tables in the database for a given job ID, provided the specified username
+        matches the owner of the interaction.
+        Args:
+            job_id (str): The unique identifier of the job to be deleted.
+            username (str): The username of the user attempting to delete the interaction.
+        Returns:
+            bool: True if the interaction and associated data were successfully deleted,
+                  False if the username does not match the owner or an error occurs.
+        Raises:
+            None: Any exceptions encountered are logged and handled internally.
+        """
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
@@ -292,6 +395,21 @@ class DatabaseManager:
             return False
 
     def create_user(self, username: str, password: str) -> bool:
+        """
+        Creates a new user in the database with the given username and password.
+
+        Args:
+            username (str): The username of the new user.
+            password (str): The plaintext password of the new user.
+
+        Returns:
+            bool: True if the user was successfully created.
+            str: "duplicate" if the username already exists in the database.
+            str: "error" if an unexpected error occurs during user creation.
+
+        Raises:
+            None: All exceptions are handled internally and logged.
+        """
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
@@ -308,6 +426,21 @@ class DatabaseManager:
             return "error"
 
     def verify_user(self, username: str, password: str) -> bool:
+        """
+        Verifies the credentials of a user by checking the provided username and password
+        against the stored records in the database.
+
+        Args:
+            username (str): The username of the user to verify.
+            password (str): The plaintext password of the user to verify.
+
+        Returns:
+            bool: True if the username and hashed password match a record in the database,
+                  False otherwise.
+
+        Raises:
+            Exception: Logs an error message if an exception occurs during the verification process.
+        """
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
@@ -321,6 +454,20 @@ class DatabaseManager:
             return False
 
     def delete_user(self, username: str, password: str) -> bool:
+        """
+        Deletes a user from the database if the provided username and password match.
+        The password is hashed using SHA-256.
+
+        Args:
+            username (str): The username of the user to be deleted.
+            password (str): The plaintext password of the user to be deleted.
+
+        Returns:
+            bool: True if the user was successfully deleted, False otherwise.
+
+        Raises:
+            Exception: Logs an error if an exception occurs during the deletion process.          
+        """
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
