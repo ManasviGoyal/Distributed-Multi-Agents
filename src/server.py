@@ -1,37 +1,47 @@
-# server.py - Backend server for Distributed multi-agent LLM system
+# Standard Library
 import asyncio
-import logging
-import numpy as np
-import requests
-import json
-import seaborn as sns
-import pandas as pd
-import io
-import re
-from PIL import Image
-from sentence_transformers import SentenceTransformer
-from scipy.spatial.distance import cosine
-from typing import Dict, List, Any, Tuple
-import os
-from dotenv import load_dotenv
-import nltk
-from nltk.sentiment import SentimentIntensityAnalyzer
-from textblob import TextBlob
-from fastapi import FastAPI, HTTPException, BackgroundTasks
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-import uvicorn
-import uuid
-from starlette.responses import StreamingResponse
 import base64
+import io
+import json
+import logging
+import os
+import re
 import time
+import uuid
+import warnings
+from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
+from typing import Dict, List, Any, Tuple
 
+# Suppress deprecated HuggingFaceHub warning
+warnings.filterwarnings("ignore", category=FutureWarning, module="huggingface_hub.file_download")
+
+# Third-Party Libraries
 import matplotlib
 matplotlib.use('Agg')  # Use non-interactive backend
 
 import matplotlib.pyplot as plt
-from database_manager import DatabaseManager
+import numpy as np
+import pandas as pd
+import requests
+import seaborn as sns
+from PIL import Image
+from sentence_transformers import SentenceTransformer
+from scipy.spatial.distance import cosine
+from textblob import TextBlob
+
+import nltk
+from nltk.sentiment import SentimentIntensityAnalyzer
+
+from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from starlette.responses import StreamingResponse
+import uvicorn
+
+# Local Imports
+from src.database_manager import DatabaseManager  # works when run from root     # works when run from inside src/
 
 # Download nltk data
 try:
@@ -76,7 +86,7 @@ MODELS = {
         "aggregator": True,  # Mark llama3 as the aggregator model
     },
     "mistral": {
-        "name": "misstralai/mistral-7b-instruct:free",
+        "name": "mistralai/mistral-7b-instruct:free",
         "temperature": 0.3,
     },
     "deephermes": {
@@ -149,8 +159,20 @@ EXAMPLES_BY_DOMAIN = {
 # Initialize the database manager
 db_manager = DatabaseManager()
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup code
+    async def health_check_task():
+        while True:
+            await check_agent_health()
+            await asyncio.sleep(HEALTH_CHECK_INTERVAL)
+    
+    asyncio.create_task(health_check_task())
+    
+    yield  # Control passes to the app here
+
 # Initialize FastAPI
-app = FastAPI(title="Multi-Agent LLM Backend")
+app = FastAPI(title="Multi-Agent LLM Backend", lifespan=lifespan)
 
 # Add CORS middleware to allow cross-origin requests
 app.add_middleware(
@@ -171,6 +193,7 @@ class QueryRequest(BaseModel):
     question_type: str = "None"
     domain: str = "None"
     aggregator_id: str = None
+    username: str
 
 class AggregatorRequest(BaseModel):
     aggregator_id: str
@@ -408,7 +431,7 @@ class ResponseAggregator:
         # Check agent health before processing
         await check_agent_health()
         
-        # === STEP 1: Pick up to 3 healthy agent models (excluding aggregator) ===
+        # STEP 1: Pick up to 3 healthy agent models (excluding aggregator)
         available_agents = []
         for model_id, config in MODELS.items():
             if config.get("aggregator", False):
@@ -427,7 +450,7 @@ class ResponseAggregator:
 
         logger.info(f"Selected agent models for query: {[aid for aid, _ in available_agents]}")
 
-        # === STEP 2: Start async tasks for those agents ===
+        # STEP 2: Start async tasks for those agents
         model_responses = {}
         tasks = []
         for model_id, config in available_agents:
@@ -440,7 +463,7 @@ class ResponseAggregator:
             )
             tasks.append((model_id, task))
 
-        # === STEP 3: Await their responses and record results ===
+        # STEP 3: Await their responses and record results
         for model_id, task in tasks:
             try:
                 response = await asyncio.wait_for(task, timeout=45)
@@ -973,20 +996,20 @@ async def api_fill_query_and_type(request: FillQueryRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/history")
-async def api_get_history(limit: int = 50):
+async def api_get_history(username: str, limit: int = 50):
     """Get interaction history"""
     try:
-        history = db_manager.get_interaction_history(limit)
+        history = db_manager.get_user_history(username, limit)
         return {"history": history}
     except Exception as e:
         logger.error(f"Error getting history: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.delete("/history/{job_id}")
-async def api_delete_history_item(job_id: str):
+async def api_delete_history_item(job_id: str, username: str):
     """Delete an interaction from history"""
     try:
-        success = db_manager.delete_interaction(job_id)
+        success = db_manager.delete_interaction(job_id, username)
         if success:
             return {"success": True}
         else:
@@ -1034,10 +1057,8 @@ async def api_process_query(request: QueryRequest, background_tasks: BackgroundT
         # Start the processing task in the background
         background_tasks.add_task(
             process_query_background,
-            job_id,
-            prefixed_query,
-            request.question_type,
-            request.domain
+            job_id, prefixed_query, request.question_type, 
+            request.domain, request.username
         )
         
         return {
@@ -1121,7 +1142,7 @@ async def api_get_image(job_id: str, image_type: str):
     else:
         raise HTTPException(status_code=404, detail="Image not found")
 
-async def process_query_background(job_id: str, query: str, question_type: str, domain: str = "Custom"):
+async def process_query_background(job_id: str, query: str, question_type: str, domain: str, username: str):
     """Process a query in the background"""
     try:
         # Update job status
@@ -1183,7 +1204,7 @@ async def process_query_background(job_id: str, query: str, question_type: str, 
         # All models succeeded, safe to save
         db_manager.save_responses(job_id, model_responses, aggregator_id)
         # Save the interaction to database
-        db_manager.save_interaction(job_id, query, domain, question_type)
+        db_manager.save_interaction(job_id, query, domain, question_type, username)
         
         # Calculate and save analysis
         consensus_score = 0
@@ -1286,18 +1307,6 @@ async def api_reset_agent(model_id: str):
     
     await reset_failed_agent(model_id)
     return {"status": "success", "message": f"Agent {model_id} has been reset"}
-
-# Add background task to periodically check agent health
-@app.on_event("startup")
-async def start_health_checker():
-    """Start background task for health checking"""
-    async def health_check_task():
-        while True:
-            await check_agent_health()
-            await asyncio.sleep(HEALTH_CHECK_INTERVAL)
-    
-    # Start the background task
-    asyncio.create_task(health_check_task())
 
 # Main entry point
 if __name__ == "__main__":

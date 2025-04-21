@@ -1,16 +1,15 @@
-# client.py - Frontend for Distributed multi-agent LLM system
 import gradio as gr
 import requests
-import json
 import time
 import argparse
 import os
 from datetime import datetime
 from typing import Dict, List, Any
 from dotenv import load_dotenv
-
 from PIL import Image
 from io import BytesIO
+
+from src.database_manager import DatabaseManager  # works when run from root     # works when run from inside src/
 
 # Load environment variables
 load_dotenv()
@@ -169,7 +168,7 @@ def update_output_labels(aggregator_id):
         output_model3: gr.update(label=agent_labels[2]),
     }
 
-def process_query(query, api_key, question_type, domain, aggregator_id, progress=gr.Progress()):
+def process_query(query, api_key, question_type, domain, aggregator_id, session, progress=gr.Progress()):
     """Process a query and wait for results"""
     global current_job_id
     consensus_score = 0  # Ensure it's always defined
@@ -209,7 +208,8 @@ def process_query(query, api_key, question_type, domain, aggregator_id, progress
                 "api_key": api_key,
                 "question_type": question_type,
                 "domain": domain,
-                "aggregator_id": aggregator_id
+                "aggregator_id": aggregator_id,
+                "username": session
             }
         )
 
@@ -362,7 +362,59 @@ def create_gradio_interface():
             "<h1 style='text-align: center;'>Distributed Multi-Agent LLM System</h1>",
             elem_id="title"
         )
+
+        # Login/Signup UI block
+        session = gr.State(value=None)  # to store current user session
+
+        with gr.Row():
+            with gr.Column():
+                auth_toggle = gr.Radio(choices=["Login", "Signup"], value="Login", label="Choose Action")
+                username_input = gr.Textbox(label="Username")
+                password_input = gr.Textbox(
+                    label="Password",
+                    type="password"
+                )
+
+                show_password_checkbox = gr.Checkbox(
+                    label="👁 Show Password",
+                    value=False
+                )
+
+                login_button = gr.Button("Login", visible=True)
+                signup_button = gr.Button("Create Account", visible=False)
+                with gr.Row():
+                    logout_button = gr.Button("Logout", visible=False)
+                    delete_account_button = gr.Button("Delete Account", visible=False)
+                login_status = gr.Markdown("Not logged in")
         
+                delete_password_input = gr.Textbox(
+                    label="Confirm your password to delete account",
+                    type="password",
+                    visible=False
+                )
+                show_delete_password_checkbox = gr.Checkbox(
+                    label="👁 Show Password",
+                    value=False,
+                    visible=False
+                )
+                confirm_delete_button = gr.Button("Confirm Deletion", visible=False)
+
+        def toggle_auth_mode(mode, session):
+            if session:
+                # Already logged in, don't toggle anything
+                return gr.update(visible=False), gr.update(visible=False)
+            if mode == "Signup":
+                return gr.update(visible=False), gr.update(visible=True)
+            else:
+                return gr.update(visible=True), gr.update(visible=False)
+
+
+        auth_toggle.change(
+            fn=toggle_auth_mode,
+            inputs=[auth_toggle, session],
+            outputs=[login_button, signup_button]
+        )
+
         with gr.Row():
             with gr.Column():
                 api_key_input = gr.Textbox(
@@ -371,18 +423,6 @@ def create_gradio_interface():
                     value=API_KEY,
                     type="password"
                 )
-                
-                # Add backend URL input
-                backend_url_input = gr.Textbox(
-                    label="Backend URL",
-                    placeholder="Enter backend server URL",
-                    value=BACKEND_URL
-                )
-                
-                # Add connection test button
-                with gr.Column():
-                    connect_button = gr.Button("Test Connection")
-                    connection_status = gr.Textbox(label="Connection Status", interactive=False)
                 
                 # Add aggregator selection radio button
                 aggregator_options = list(model_info.keys()) if model_info else []
@@ -498,9 +538,9 @@ def create_gradio_interface():
                 # Hidden state to store job IDs
                 history_job_ids = gr.State([])
                 
-                def refresh_history():
+                def refresh_history(session_user):
                     try:
-                        response = requests.get(f"{BACKEND_URL}/history?limit=100")
+                        response = requests.get(f"{BACKEND_URL}/history?username={session_user}&limit=100")
                         if response.status_code != 200:
                             return [], []
                         
@@ -559,7 +599,10 @@ def create_gradio_interface():
                     load_btn = gr.Button("📥 Load Selected Entry")
                     delete_btn = gr.Button("🗑️ Delete Selected Entry")
                 
-                # Update selected row when user clicks
+                def select_history_row(evt: gr.SelectData):
+                    row_idx = evt.index[0]
+                    return row_idx, f"Selected row: {row_idx + 1}"
+                    
                 def update_selected_row(evt: gr.SelectData, current_idx):
                     row_idx = evt.index[0]
                     if row_idx == current_idx:  # If clicking already selected row
@@ -568,8 +611,7 @@ def create_gradio_interface():
 
                 # Connect selection event
                 history_list.select(
-                    fn=update_selected_row,
-                    inputs=[selected_row_idx],  # Pass current index
+                    fn=select_history_row,
                     outputs=[selected_row_idx, selected_row_info]
                 )
                 
@@ -646,7 +688,7 @@ def create_gradio_interface():
                         return [None] * 14
                 
                 # Delete selected row
-                def delete_selected_row(row_idx, job_ids):
+                def delete_selected_row(row_idx, job_ids, session_user):
                     if row_idx < 0 or row_idx >= len(job_ids):
                         return gr.update(), gr.update(), "No row selected"
                     
@@ -654,11 +696,11 @@ def create_gradio_interface():
                         job_id = job_ids[row_idx]
                         
                         # Delete the job
-                        delete_response = requests.delete(f"{BACKEND_URL}/history/{job_id}")
+                        delete_response = requests.delete(f"{BACKEND_URL}/history/{job_id}?username={session_user}")
                         if delete_response.status_code == 200:
                             logger.info(f"Deleted job {job_id}")
                             # Refresh the history
-                            rows, job_ids = refresh_history()
+                            rows, job_ids = refresh_history(session_user)
                             return rows, job_ids, "Row deleted successfully"
                         else:
                             logger.error(f"Failed to delete job {job_id}: {delete_response.status_code}")
@@ -677,73 +719,260 @@ def create_gradio_interface():
                         consensus_score, output_heatmap, output_emotion, output_polarity,
                         output_radar, aggregator_radio
                     ]
-                )
+                ).then(fn=lambda: (-1, "No row selected"), outputs=[selected_row_idx, selected_row_info])
                 
                 delete_btn.click(
                     fn=delete_selected_row,
-                    inputs=[selected_row_idx, history_job_ids],
+                    inputs=[selected_row_idx, history_job_ids, session],
                     outputs=[history_list, history_job_ids, selected_row_info]
-                )
+                ).then(fn=lambda: (-1, "No row selected"), outputs=[selected_row_idx, selected_row_info])
                 
                 # Connect refresh button
                 refresh_history_btn.click(
                     fn=refresh_history,
-                    inputs=None,
+                    inputs=[session],
                     outputs=[history_list, history_job_ids]
                 )
+
+                def is_valid_password(password):
+                    return (
+                        len(password) >= 8 and
+                        any(c.isupper() for c in password) and
+                        any(c.islower() for c in password) and
+                        any(c.isdigit() for c in password)
+                    )
+
+                def login_user(username, password):
+                    db = DatabaseManager()
+                    if db.verify_user(username, password):
+                        return (
+                            username,
+                            gr.update(visible=False),  # login button
+                            gr.update(visible=False),  # signup button
+                            gr.update(visible=True),   # logout button
+                            gr.update(visible=True),   # delete button
+                            gr.update(visible=False),  # password field
+                            gr.update(visible=False),  # confirm delete button
+                            gr.update(value=f"✅ Logged in as **{username}**"),
+                            gr.update(value=False),  # reset checkbox
+                            gr.update(type="password")
+                        )
+                    else:
+                        return (
+                            None,
+                            gr.update(visible=False),
+                            gr.update(visible=False),
+                            gr.update(visible=False),
+                            gr.update(visible=False),
+                            gr.update(visible=False),
+                            gr.update(visible=False),
+                            gr.update(value="⚠️ Invalid username or password."),
+                            gr.update(value=False),  # reset checkbox
+                            gr.update(type="password")
+                        )
+
+                def signup_user(username, password):
+                    db = DatabaseManager()
+
+                    if not is_valid_password(password):
+                        return (
+                            None,
+                            gr.update(visible=False), gr.update(visible=False),  # hide both
+                            gr.update(visible=False), gr.update(visible=False),
+                            gr.update(visible=False), gr.update(visible=False),
+                            gr.update(value="❌ Password must be at least 8 characters, include a lowercase, uppercase letter, and a number.")
+                        )
+
+                    result = db.create_user(username, password)
+
+                    if result is True:
+                        return (
+                            username,
+                            gr.update(visible=False), gr.update(visible=False),
+                            gr.update(visible=True), gr.update(visible=True),
+                            gr.update(visible=False), gr.update(visible=False),
+                            gr.update(value=f"✅ **Account created! Welcome, {username}**"),
+                            gr.update(value=False),  # reset checkbox
+                            gr.update(type="password")
+                        )
+                    elif result == "duplicate":
+                        return (
+                            None,
+                            gr.update(visible=False), gr.update(visible=False),  # hide both
+                            gr.update(visible=False), gr.update(visible=False),
+                            gr.update(visible=False), gr.update(visible=False),
+                            gr.update(value="⚠️ **The username already exists.**"),
+                            gr.update(value=False),  # reset checkbox
+                            gr.update(type="password")
+                        )
+                    else:
+                        return (
+                            None,
+                            gr.update(visible=False), gr.update(visible=False),  # hide both
+                            gr.update(visible=False), gr.update(visible=False),
+                            gr.update(visible=False), gr.update(visible=False),
+                            gr.update(value="❌ **Signup failed due to a server error.**"),
+                            gr.update(value=False),  # reset checkbox
+                            gr.update(type="password")
+                        )
+
+                def logout_user():
+                    return (
+                        None,
+                        gr.update(visible=False),   # login
+                        gr.update(visible=False),   # signup
+                        gr.update(visible=False),  # logout
+                        gr.update(visible=False),  # delete
+                        gr.update(visible=False),  # password field
+                        gr.update(visible=False),  # confirm delete
+                        gr.update(value="✅ **You have been logged out successfully.**"),
+                        gr.update(value=False, visible=False),  # hide + uncheck the checkbox
+                        gr.update(value=False),  # reset checkbox
+                        gr.update(type="password")
+                    )
+
+                def delete_account(username, password):
+                    db = DatabaseManager()
+                    if db.delete_user(username, password):
+                        return (
+                            None,  # clear session
+                            gr.update(visible=True),   # login
+                            gr.update(visible=True),   # signup
+                            gr.update(visible=False),  # logout
+                            gr.update(visible=False),  # delete account
+                            gr.update(value=""),       # clear password field
+                            gr.update(visible=False),  # hide confirm delete
+                            gr.update(value="✅ Account deleted successfully."),
+                            gr.update(value=False, visible=False)  # hide + uncheck the checkbox
+                        )
+                    else:
+                        return (
+                            username,  # session still active
+                            gr.update(visible=False), gr.update(visible=False),  # hide login/signup
+                            gr.update(visible=True), gr.update(visible=True),    # keep logout + delete
+                            gr.update(value=""),       # clear password input
+                            gr.update(visible=False),  # hide confirm delete (to prevent retry loop)
+                            gr.update(value="❌ Invalid password. Account not deleted.")
+
+                        )
+
+                def show_delete_inputs():
+                    return (
+                        gr.update(visible=True),   # delete_password_input
+                        gr.update(visible=True),   # confirm_delete_button
+                        gr.update(visible=True)    # show_delete_password_checkbox
+                    )
                 
+                def toggle_password_visibility(show):
+                    return gr.update(type="text" if show else "password")
+
+                login_button.click(
+                    fn=login_user,
+                    inputs=[username_input, password_input],
+                    outputs=[
+                        session, 
+                        login_button, signup_button, logout_button, 
+                        delete_account_button, delete_password_input,
+                        confirm_delete_button, login_status,
+                        show_password_checkbox, password_input  # main login checkbox & field
+                    ]
+                ).then(
+                    fn=toggle_auth_mode,
+                    inputs=[auth_toggle, session],
+                    outputs=[login_button, signup_button]
+                )
+
+                signup_button.click(
+                    fn=signup_user,
+                    inputs=[username_input, password_input],
+                    outputs=[
+                        session, 
+                        login_button, signup_button, logout_button, 
+                        delete_account_button, delete_password_input,
+                        confirm_delete_button, login_status,
+                        show_password_checkbox, password_input  # main login checkbox & field
+                    ]
+                ).then(
+                    fn=toggle_auth_mode,
+                    inputs=[auth_toggle, session],
+                    outputs=[login_button, signup_button]
+                )
+
+                logout_button.click(
+                    fn=logout_user,
+                    outputs=[
+                        session, 
+                        login_button, signup_button, logout_button, 
+                        delete_account_button, delete_password_input,
+                        confirm_delete_button, login_status,
+                        show_delete_password_checkbox,
+                        show_password_checkbox, password_input  # main login checkbox & field
+                    ]
+                ).then(
+                    fn=lambda: (-1, "No row selected"),
+                    outputs=[selected_row_idx, selected_row_info]
+                ).then(
+                    fn=lambda: ([], []),  # This clears history table and job IDs
+                    outputs=[history_list, history_job_ids]
+                ).then(
+                    fn=toggle_auth_mode,
+                    inputs=[auth_toggle, session],
+                    outputs=[login_button, signup_button]
+                )
+
+                delete_account_button.click(
+                    fn=show_delete_inputs,
+                    inputs=[],
+                    outputs=[
+                        delete_password_input,
+                        confirm_delete_button,
+                        show_delete_password_checkbox
+                    ]
+                )
+
+                confirm_delete_button.click(
+                    fn=delete_account,
+                    inputs=[session, delete_password_input],
+                    outputs=[
+                        session,
+                        login_button, signup_button,
+                        logout_button, delete_account_button,
+                        delete_password_input, confirm_delete_button,
+                        login_status, show_delete_password_checkbox
+                    ]
+                ).then(
+                    fn=lambda: (-1, "No row selected"),
+                    outputs=[selected_row_idx, selected_row_info]
+                ).then(
+                    fn=lambda: ([], []),  # <-- This clears history table and job IDs
+                    outputs=[history_list, history_job_ids]
+                ).then(
+                    fn=toggle_auth_mode,
+                    inputs=[auth_toggle, session],
+                    outputs=[login_button, signup_button]
+                )
+
+                show_password_checkbox.change(
+                    fn=toggle_password_visibility,
+                    inputs=[show_password_checkbox],
+                    outputs=[password_input]
+                )
+
+                show_delete_password_checkbox.change(
+                    fn=toggle_password_visibility,
+                    inputs=[show_delete_password_checkbox],
+                    outputs=[delete_password_input]
+                )
+
                 # Load history on startup
-                app.load(fn=refresh_history, inputs=None, outputs=[history_list, history_job_ids])
+                app.load(fn=refresh_history, inputs=[session], outputs=[history_list, history_job_ids])
 
         # Connect the domain radio button to update example choices
         domain_radio.change(fn=get_example_choices, inputs=domain_radio, outputs=example_selector)
         
         # Connect the example selector to fill query and type
         example_selector.change(fn=fill_query_and_type, inputs=[example_selector, domain_radio], outputs=[input_query, question_type])
-        
-        # Connect backend URL input to update the backend URL
-        def update_backend_url(url):
-            global BACKEND_URL
-            BACKEND_URL = url
-            return url
-        
-        backend_url_input.change(fn=update_backend_url, inputs=backend_url_input, outputs=backend_url_input)
-        
-        # Connect the connect button to test the connection
-        def test_connection(url):
-            try:
-                # Test basic connectivity
-                response = requests.get(f"{url}/")
-                if response.status_code != 200:
-                    return f"Failed to connect to backend: Status code {response.status_code}"
-                
-                # Test models endpoint
-                models_response = requests.get(f"{url}/models")
-                if models_response.status_code != 200:
-                    return "Connected to backend, but models endpoint failed."
-                
-                # Test domains endpoint
-                domains_response = requests.get(f"{url}/domains")
-                if domains_response.status_code != 200:
-                    return "Connected to backend, but domains endpoint failed."
-                    
-                # Test history endpoint
-                history_response = requests.get(f"{url}/history?limit=1")
-                if history_response.status_code != 200:
-                    return "Connected to backend, but history endpoint failed."
-                
-                # If all tests pass, refresh the client data
-                global model_info, domains, question_types, examples_by_domain
-                init_success = init_client()
-                if init_success:
-                    return "Connected successfully! All endpoints validated."
-                else:
-                    return "Connected to backend, but failed to update client information."
-            except Exception as e:
-                return f"Error connecting to backend: {str(e)}"
-        
-        connect_button.click(fn=test_connection, inputs=backend_url_input, outputs=connection_status)
-        
+ 
         # Connect the radio button to update the aggregator
         aggregator_radio.change(
             fn=update_aggregator,
@@ -755,29 +984,32 @@ def create_gradio_interface():
             outputs=[output_aggregator, output_model1, output_model2, output_model3]
         )
 
-        # Connect the button to the process function
-        submit_btn.click(
-            fn=process_query,
-            inputs=[input_query, api_key_input, question_type, domain_radio, aggregator_radio],
-            outputs=[
-                output_aggregator,
-                output_model1,
-                output_model2,
-                output_model3,
-                consensus_score,
-                output_heatmap,
-                output_emotion,
-                output_polarity,
-                output_radar,
-                plot_warning_box,
-                output_aggregator,
-                output_model1,
-                output_model2,
-                output_model3
-            ]
+        def guarded_process(*args):
+            session_user = args[-1]
+            if not session_user:
+                return (
+                    gr.update(value="❌ Please log in first."),
+                    "", "", "", 0,
+                    None, None, None, None,
+                    gr.update(value="", visible=False),
+                    gr.update(label="Aggregator"),
+                    gr.update(label="Model 1"),
+                    gr.update(label="Model 2"),
+                    gr.update(label="Model 3")
+                )
+            return process_query(*args[:-1], session_user)
 
+        submit_btn.click(
+            fn=guarded_process,
+            inputs=[input_query, api_key_input, question_type, domain_radio, aggregator_radio, session],
+            outputs=[
+                output_aggregator, output_model1, output_model2, output_model3,
+                consensus_score, output_heatmap, output_emotion, output_polarity,
+                output_radar, plot_warning_box,
+                output_aggregator, output_model1, output_model2, output_model3
+            ]
         )
-                    
+         
     return app
 
 # Create .env file template
