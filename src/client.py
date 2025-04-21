@@ -244,7 +244,7 @@ def update_output_labels(aggregator_id):
         output_model3: gr.update(label=agent_labels[2]),
     }
 
-def process_query(query, api_key, question_type, domain, aggregator_id, session, progress=gr.Progress()):
+def process_query(query, api_key, question_type, domain, aggregator_id, ethical_views, session, progress=gr.Progress()):
     """
     Processes a user query by sending it to a backend service, polling for the job status, 
     and retrieving the results, including responses from models, analysis, and visualizations.
@@ -308,7 +308,8 @@ def process_query(query, api_key, question_type, domain, aggregator_id, session,
                 "question_type": question_type,
                 "domain": domain,
                 "aggregator_id": aggregator_id,
-                "username": session
+                "username": session,
+                "ethical_views": ethical_views
             }
         )
 
@@ -578,6 +579,23 @@ def create_gradio_interface():
                     label="Select Domain Expertise", 
                     value="Custom" if "Custom" in domain_options else None
                 )
+
+                ethical_view_selector = gr.CheckboxGroup(
+                    choices=[
+                        "None",
+                        "Utilitarian",
+                        "Deontologist",
+                        "Virtue Ethicist",
+                        "Libertarian",
+                        "Rawlsian",
+                        "Precautionary"
+                    ],
+                    value=["None"],
+                    label="Choose Ethical View(s) for Agents",
+                    info="Select exactly 1 or 3 perspectives, or choose 'None' to skip ethics."
+                )
+
+                ethical_warning_box = gr.Markdown("", visible=False)
                 
                 question_type_options = question_types if question_types else []
                 question_type = gr.Radio(
@@ -1148,6 +1166,35 @@ def create_gradio_interface():
                     """
                     return gr.update(type="text" if show else "password")
 
+                def validate_ethical_selection(selected):
+                    """
+                    Validates the user's selection of ethical perspectives.
+
+                    This function ensures that the selection adheres to the following rules:
+                    1. The option "None" cannot be selected alongside other ethical perspectives.
+                    2. If "None" is not selected, the user must select either exactly 1 or exactly 3 ethical perspectives.
+
+                    Args:
+                        selected (list): A list of strings representing the selected ethical perspectives.
+
+                    Returns:
+                        gr.update: An update object for the UI, containing:
+                            - value (str): A warning message if the selection is invalid, or an empty string if valid.
+                            - visible (bool): A flag indicating whether the warning message should be displayed.
+                    """
+                    if "None" in selected and len(selected) > 1:
+                        return gr.update(value="⚠️ Cannot select 'None' with other ethical views.", visible=True)
+                    elif "None" not in selected and len(selected) not in [1, 3]:
+                        return gr.update(value="⚠️ Select either exactly 1 or 3 ethical perspectives.", visible=True)
+                    else:
+                        return gr.update(value="", visible=False)
+
+                ethical_view_selector.change(
+                    fn=validate_ethical_selection,
+                    inputs=[ethical_view_selector],
+                    outputs=[ethical_warning_box]
+                )
+
                 login_button.click(
                     fn=login_user,
                     inputs=[username_input, password_input],
@@ -1266,7 +1313,7 @@ def create_gradio_interface():
             outputs=[output_aggregator, output_model1, output_model2, output_model3]
         )
 
-        def guarded_process(*args):
+        def guarded_process(query, api_key, question_type, domain, aggregator_id, ethical_views, session_user):
             """
             A wrapper function that ensures a user session is active before processing a query.
 
@@ -1282,11 +1329,9 @@ def create_gradio_interface():
                 Otherwise, delegates the processing to the `process_query` function with 
                 the provided arguments (excluding the session user).
             """
-            session_user = args[-1]
             if not session_user:
                 return (
-                    gr.update(value="❌ Please log in first."),
-                    "", "", "", 0,
+                    gr.update(value="❌ Please log in first."), "", "", "", 0,
                     None, None, None, None,
                     gr.update(value="", visible=False),
                     gr.update(label="Aggregator"),
@@ -1294,11 +1339,11 @@ def create_gradio_interface():
                     gr.update(label="Model 2"),
                     gr.update(label="Model 3")
                 )
-            return process_query(*args[:-1], session_user)
+            return process_query(query, api_key, question_type, domain, aggregator_id, ethical_views, session_user)
 
         submit_btn.click(
             fn=guarded_process,
-            inputs=[input_query, api_key_input, question_type, domain_radio, aggregator_radio, session],
+            inputs=[input_query, api_key_input, question_type, domain_radio, aggregator_radio, ethical_view_selector, session],
             outputs=[
                 output_aggregator, output_model1, output_model2, output_model3,
                 consensus_score, output_heatmap, output_emotion, output_polarity,

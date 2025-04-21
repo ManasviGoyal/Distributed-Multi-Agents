@@ -7,6 +7,7 @@ import logging
 import os
 import re
 import time
+import random
 import uuid
 import warnings
 from contextlib import asynccontextmanager
@@ -156,6 +157,42 @@ EXAMPLES_BY_DOMAIN = {
     ]
 }
 
+ETHICAL_VIEWS = {
+    "Utilitarian": "You are a utilitarian. Maximize overall good and minimize harm.",
+    "Deontologist": "You are a deontologist. Follow moral rules and duties.",
+    "Virtue Ethicist": "You are a virtue ethicist. Emphasize compassion and integrity.",
+    "Libertarian": "You are a libertarian. Prioritize individual freedom and autonomy.",
+    "Rawlsian": "You are a Rawlsian. Maximize justice for the least advantaged.",
+    "Precautionary": "You are a precautionary thinker. Avoid catastrophic risks at all costs."
+}
+
+def assign_ethics_to_agents(agent_ids: List[str], ethical_views: List[str]) -> Dict[str, str]:
+    """
+    Assigns ethical perspectives to a list of agents based on the provided ethical views.
+
+    Parameters:
+        agent_ids (List[str]): A list of agent identifiers.
+        ethical_views (List[str]): A list of ethical perspectives to assign. 
+            - If empty or contains "None", no ethical perspective is assigned, and agents are mapped to an empty string.
+            - If it contains exactly one perspective, all agents are assigned that perspective.
+            - If it contains exactly three perspectives, a random selection of perspectives is assigned to the agents.
+
+    Returns:
+        Dict[str, str]: A dictionary mapping each agent ID to its assigned ethical perspective.
+
+    Raises:
+        ValueError: If the number of ethical perspectives is not 1, 3, or "None".
+    """
+    if not ethical_views or "None" in ethical_views:
+        return {aid: "" for aid in agent_ids}  # Skip role
+    if len(ethical_views) == 1:
+        return {aid: ETHICAL_VIEWS[ethical_views[0]] for aid in agent_ids}
+    elif len(ethical_views) == 3:
+        chosen = random.sample(ethical_views, len(agent_ids))
+        return {aid: ETHICAL_VIEWS[view] for aid, view in zip(agent_ids, chosen)}
+    else:
+        raise ValueError("Select exactly 1 or 3 ethical perspectives, or 'None'.")
+
 # Initialize the database manager
 db_manager = DatabaseManager()
 
@@ -226,6 +263,7 @@ class QueryRequest(BaseModel):
     domain: str = "None"
     aggregator_id: str = None
     username: str
+    ethical_views: List[str] = []
 
 class AggregatorRequest(BaseModel):
     """
@@ -345,6 +383,12 @@ class OpenRouterClient:
             if self.site_name:
                 headers["X-Title"] = self.site_name
             
+            # Use longer response for aggregator
+            model_id = next((mid for mid, config in MODELS.items() if config['name'] == model_name), None)
+            max_tokens = 500
+            if model_id and MODELS.get(model_id, {}).get("aggregator", False):
+                max_tokens = 1000  # or 1500 if needed
+
             data = {
                 "model": model_name,
                 "messages": [
@@ -354,7 +398,7 @@ class OpenRouterClient:
                     }
                 ],
                 "temperature": temperature,
-                "max_tokens": 500  # Limit response length
+                "max_tokens": max_tokens
             }
 
             # Make API request asynchronously with timeout
@@ -566,7 +610,7 @@ class ResponseAggregator:
         """
         self.client = openrouter_client
     
-    async def process_query(self, query: str, question_type: str = "none") -> Dict[str, Any]:
+    async def process_query(self, query: str, question_type: str = "none", ethical_views: List[str] = ["None"]) -> Dict[str, Any]:
         """
         Process a query through multiple agent models, aggregate their responses, and provide a consensus summary.
         This method performs the following steps:
@@ -579,6 +623,7 @@ class ResponseAggregator:
         Args:
             query (str): The input query to process.
             question_type (str, optional): The type of question, used to apply a prefix to the query. Defaults to "none".
+        ethical_views (List[str], optional): A list of 1 or 3 ethical perspectives or ["None"] to skip role assignments.
         Returns:
             Dict[str, Any]: A dictionary containing the following keys:
                 - "query" (str): The original query.
@@ -598,7 +643,7 @@ class ResponseAggregator:
         
         # Check agent health before processing
         await check_agent_health()
-        
+
         # STEP 1: Pick up to 3 healthy agent models (excluding aggregator)
         available_agents = []
         for model_id, config in MODELS.items():
@@ -618,14 +663,22 @@ class ResponseAggregator:
 
         logger.info(f"Selected agent models for query: {[aid for aid, _ in available_agents]}")
 
+        # assign ethics after agent IDs are known
+        agent_ids = [model_id for model_id, _ in available_agents]
+        ethics_map = assign_ethics_to_agents(agent_ids, ethical_views)
+        
         # STEP 2: Start async tasks for those agents
-        model_responses = {}
         tasks = []
         for model_id, config in available_agents:
+            if ethics_map[model_id]:
+                agent_prompt = f"{ethics_map[model_id]}\n\n{formatted_query}"
+            else:
+                agent_prompt = formatted_query
+
             task = asyncio.create_task(
                 self.client.generate_response(
                     config["name"],
-                    formatted_query,
+                    agent_prompt,
                     config["temperature"]
                 )
             )
@@ -1436,10 +1489,10 @@ async def api_process_query(request: QueryRequest, background_tasks: BackgroundT
         # Start the processing task in the background
         background_tasks.add_task(
             process_query_background,
-            job_id, prefixed_query, request.question_type, 
-            request.domain, request.username
+            job_id, prefixed_query, request.question_type,
+            request.domain, request.ethical_views, request.username
         )
-        
+
         return {
             "job_id": job_id,
             "status": "processing"
@@ -1561,7 +1614,7 @@ async def api_get_image(job_id: str, image_type: str):
     else:
         raise HTTPException(status_code=404, detail="Image not found")
 
-async def process_query_background(job_id: str, query: str, question_type: str, domain: str, username: str):
+async def process_query_background(job_id: str, query: str, question_type: str, domain: str, ethical_views: List[str], username: str):
     """
     Processes a query asynchronously in the background, updating job status and progress,
     interacting with agents, aggregating responses, and saving results to the database.
@@ -1570,6 +1623,7 @@ async def process_query_background(job_id: str, query: str, question_type: str, 
         query (str): The query string to be processed.
         question_type (str): The type of question being asked (e.g., factual, analytical).
         domain (str): The domain or context of the query.
+        ethical_views (List[str]): A list of ethical perspectives.
         username (str): The username of the user submitting the query.
     Raises:
         Exception: Captures and logs any errors that occur during processing.
