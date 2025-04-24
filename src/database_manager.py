@@ -63,7 +63,8 @@ class DatabaseManager:
                 domain TEXT,
                 question_type TEXT,
                 timestamp INTEGER NOT NULL,
-                username TEXT NOT NULL
+                username TEXT NOT NULL,
+                roles TEXT
             )
             ''')
             
@@ -120,7 +121,7 @@ class DatabaseManager:
             cursor = conn.cursor()
 
             cursor.execute("""
-            SELECT i.job_id, i.query, i.domain, i.question_type, i.timestamp, a.consensus_score
+            SELECT i.job_id, i.query, i.domain, i.question_type, i.timestamp, i.roles, a.consensus_score
             FROM interactions i
             LEFT JOIN analysis a ON i.job_id = a.job_id
             WHERE i.username = ?
@@ -147,19 +148,20 @@ class DatabaseManager:
             logger.error(f"Error getting user history: {str(e)}")
             return []
 
-    def save_interaction(self, job_id: str, query: str, domain: str, question_type: str, username: str) -> bool:
+    def save_interaction(self, job_id: str, query: str, domain: str, question_type: str, username: str, roles: Optional[str] = "") -> bool:
         """
         Saves an interaction record to the database.
         Args:
             job_id (str): The unique identifier for the job associated with the interaction.
-            query (str): The query or input provided during the interaction.
+            query (str): The query or input provided by the user.
             domain (str): The domain or category of the interaction.
-            question_type (str): The type of question or interaction being recorded.
-            username (str): The username of the individual associated with the interaction.
+            question_type (str): The type of question being asked.
+            username (str): The username of the individual initiating the interaction.
+            roles (Optional[str]): Additional roles or metadata associated with the interaction. Defaults to an empty string.
         Returns:
             bool: True if the interaction was successfully saved, False otherwise.
         Raises:
-            Exception: Logs an error message if an exception occurs during the database operation.
+            Logs an error message if an exception occurs during the database operation.
         """
         try:
             conn = sqlite3.connect(self.db_path)
@@ -168,8 +170,8 @@ class DatabaseManager:
             timestamp = int(time.time())
             
             cursor.execute(
-                "INSERT INTO interactions (job_id, query, domain, question_type, timestamp, username) VALUES (?, ?, ?, ?, ?, ?)",
-                (job_id, query, domain, question_type, timestamp, username)
+                "INSERT INTO interactions (job_id, query, domain, question_type, timestamp, username, roles) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (job_id, query, domain, question_type, timestamp, username, roles)
             )
 
             conn.commit()
@@ -258,7 +260,7 @@ class DatabaseManager:
             cursor = conn.cursor()
             
             cursor.execute("""
-            SELECT i.job_id, i.query, i.domain, i.question_type, i.timestamp,
+            SELECT i.job_id, i.query, i.domain, i.question_type, i.timestamp, i.roles, a.consensus_score
                    a.consensus_score
             FROM interactions i
             LEFT JOIN analysis a ON i.job_id = a.job_id

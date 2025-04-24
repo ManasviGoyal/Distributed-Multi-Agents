@@ -162,7 +162,7 @@ ETHICAL_VIEWS = {
     "Deontologist": "You are a deontologist. Follow moral rules and duties.",
     "Virtue Ethicist": "You are a virtue ethicist. Emphasize compassion and integrity.",
     "Libertarian": "You are a libertarian. Prioritize individual freedom and autonomy.",
-    "Rawlsian": "You are a Rawlsian. Maximize justice for the least advantaged.",
+    "Rawlsian": "You are a rawlsian. Maximize justice for the least advantaged.",
     "Precautionary": "You are a precautionary thinker. Avoid catastrophic risks at all costs."
 }
 
@@ -184,15 +184,24 @@ def assign_ethics_to_agents(agent_ids: List[str], ethical_views: List[str]) -> D
         ValueError: If the number of ethical perspectives is not 1, 3, or "None".
     """
     if not ethical_views or "None" in ethical_views:
-        return {aid: "" for aid in agent_ids}  # Skip role
-    if len(ethical_views) == 1:
-        return {aid: ETHICAL_VIEWS[ethical_views[0]] for aid in agent_ids}
-    elif len(ethical_views) == 3:
-        chosen = random.sample(ethical_views, len(agent_ids))
-        return {aid: ETHICAL_VIEWS[view] for aid, view in zip(agent_ids, chosen)}
-    else:
-        raise ValueError("Select exactly 1 or 3 ethical perspectives, or 'None'.")
+        return {aid: "" for aid in agent_ids}  # No roles
 
+    assigned = {}
+    used_roles = set()
+
+    # Step 1: Assign unique roles to as many agents as possible
+    for aid, view in zip(agent_ids, ethical_views):
+        assigned[aid] = ETHICAL_VIEWS[view]
+        used_roles.add(view)
+
+    # Step 2: Assign remaining agents random roles from ethical_views
+    remaining_ids = agent_ids[len(assigned):]
+    for aid in remaining_ids:
+        random_view = random.choice(ethical_views)
+        assigned[aid] = ETHICAL_VIEWS[random_view]
+
+    return assigned
+    
 # Initialize the database manager
 db_manager = DatabaseManager()
 
@@ -477,120 +486,103 @@ class OpenRouterClient:
     def analyze_emotional_tones(self, text: str) -> Dict[str, float]:
         """
         Analyze the emotional tones present in a given text.
-        This method uses predefined patterns and sentiment analysis to detect 
-        and score various emotional tones in the input text. The tones include 
-        Empathetic, Judgmental, Analytical, Ambivalent, Defensive, and Curious.
-        The scoring is based on:
-        - Pattern matching for specific keywords or phrases associated with each tone.
-        - Sentiment analysis using VADER to adjust scores for certain tones.
-        The final scores are normalized to ensure they sum to 1.
+
+        This method evaluates the input text for specific emotional tones such as 
+        Empathetic, Judgmental, Analytical, Ambivalent, Defensive, and Curious. 
+        It uses predefined regex patterns to detect tone-related keywords and 
+        incorporates sentiment analysis using VADER to adjust tone scores.
+
         Args:
             text (str): The input text to analyze.
+
         Returns:
-            Dict[str, float]: A dictionary where keys are emotional tone names 
-            and values are their respective normalized scores (between 0 and 1).
+            Dict[str, float]: A dictionary where keys are emotional tone categories 
+            and values are their respective normalized scores (rounded to 4 decimal places).
+            The scores represent the relative presence of each tone in the text.
         """
-        # Basic patterns for emotional tone detection
-        patterns = {
-            "Empathetic": [
-                r'\b(?:understand|feel for|empathize|compassion|support|care)\b',
-                r'\b(?:your perspective|your feelings|your situation)\b',
-                r'\b(?:I hear you|I understand|I acknowledge)\b'
-            ],
-            "Judgmental": [
-                r'\b(?:should|must|always|never|right|wrong|bad|good|incorrect|flawed)\b',
-                r'\b(?:unacceptable|inappropriate|proper|improper|correct|incorrect)\b'
-            ],
-            "Analytical": [
-                r'\b(?:analyze|consider|examine|evaluate|assess|investigate)\b',
-                r'\b(?:data|evidence|research|study|statistics|analysis)\b',
-                r'\b(?:logical|rational|objective|systematic)\b'
-            ],
-            "Ambivalent": [
-                r'\b(?:however|on the other hand|but|yet|nevertheless|although)\b',
-                r'\b(?:unclear|ambiguous|uncertain|not sure|complex|complicated)\b',
-                r'\b(?:mixed feelings|conflicted|torn between)\b'
-            ],
-            "Defensive": [
-                r'\b(?:defend|protect|guard|shield|secure|safeguard)\b',
-                r'\b(?:against|caution|warning|threat|risk|danger)\b',
-                r'\b(?:careful|cautious|vigilant|wary|alert)\b'
-            ],
-            "Curious": [
-                r'\b(?:curious|wonder|interesting|fascinating|intrigued)\b',
-                r'\b(?:question|explore|discover|learn|investigate)\b',
-                r'\b(?:what if|how about|perhaps|maybe|possibility)\b'
-            ]
-        }
-        
-        # Initialize scores
-        scores = {tone: 0.0 for tone in EMOTIONAL_TONES}
-        
-        # Calculate matches for each tone
         lower_text = text.lower()
-        for tone, pattern_list in patterns.items():
-            for pattern in pattern_list:
-                matches = re.findall(pattern, lower_text, re.IGNORECASE)
-                if matches:
-                    scores[tone] += len(matches) / len(text.split()) * 10  # Normalize by text length
-        
-        # Enhance with VADER sentiment for certain tones
+
+        patterns = {
+            "Empathetic": [r'\b(empath(y|ize)|understand|support|care for|compassion)\b'],
+            "Judgmental": [r'\b(should|must|wrong|bad|flawed|unacceptable)\b'],
+            "Analytical": [r'\b(analy(z|s)e|data|logic|evaluate|evidence|rational)\b'],
+            "Ambivalent": [r'\b(however|but|on the other hand|conflicted|mixed feelings)\b'],
+            "Defensive": [r'\b(defend|protect|warn|risk|caution|danger|threat)\b'],
+            "Curious": [r'\b(curious|wonder|interesting|explore|what if|question)\b']
+        }
+
+        scores = {tone: 0.0 for tone in patterns}
+
+        total_words = max(1, len(lower_text.split()))
+        for tone, regs in patterns.items():
+            for pattern in regs:
+                matches = re.findall(pattern, lower_text)
+                scores[tone] += len(matches)
+
+        # Normalize (softmax-style without exp)
+        total_hits = sum(scores.values())
+        if total_hits > 0:
+            for tone in scores:
+                scores[tone] = scores[tone] / total_hits
+        else:
+            scores["Analytical"] = 1.0  # default fallback
+
+        # Add VADER sentiment influence
         sentiment = self.sentiment_analyzer.polarity_scores(text)
-        
-        # Adjust scores based on sentiment
-        if sentiment['pos'] > 0.2:
-            scores['Empathetic'] += sentiment['pos'] * 0.5
-            
-        if sentiment['neg'] > 0.2:
-            scores['Judgmental'] += sentiment['neg'] * 0.3
-            scores['Defensive'] += sentiment['neg'] * 0.2
-            
-        if sentiment['neu'] > 0.7:
-            scores['Analytical'] += sentiment['neu'] * 0.4
-            scores['Curious'] += sentiment['neu'] * 0.2
-            
-        # Ensure all scores are between 0 and 1
-        for tone in scores:
-            scores[tone] = min(max(scores[tone], 0.0), 1.0)
-            
-        # Normalize scores to sum to 1
+        scores["Empathetic"] += sentiment["pos"] * 0.3
+        scores["Judgmental"] += sentiment["neg"] * 0.2
+        scores["Analytical"] += sentiment["neu"] * 0.1
+
+        # Normalize again
         total = sum(scores.values())
         if total > 0:
             for tone in scores:
-                scores[tone] /= total
-        
+                scores[tone] = round(scores[tone] / total, 4)
+
         return scores
     
     def analyze_sentiment(self, text: str) -> Dict[str, Any]:
         """
-        Analyzes the sentiment of the given text using multiple sentiment analysis tools.
-        This method combines VADER sentiment analysis, TextBlob sentiment analysis, 
-        and an emotional tone analysis to provide a comprehensive sentiment evaluation.
+        Analyzes the sentiment and emotional tone of the given text.
+        This method combines sentiment analysis from VADER and TextBlob to calculate
+        an average polarity and subjectivity score. It also evaluates emotional tones
+        and determines a contextual tone based on the polarity.
         Args:
             text (str): The input text to analyze.
         Returns:
             Dict[str, Any]: A dictionary containing the following keys:
-                - 'polarity' (float): The polarity score from TextBlob (-1.0 to 1.0).
-                - 'compound' (float): The compound sentiment score from VADER (-1.0 to 1.0).
-                - 'subjectivity' (float): The subjectivity score from TextBlob (0.0 to 1.0).
-                - 'emotional_tones' (Any): The result of the emotional tone analysis.
+                - 'polarity' (float): The average polarity score from VADER and TextBlob.
+                - 'compound' (float): The compound sentiment score from VADER.
+                - 'subjectivity' (float): The subjectivity score from TextBlob.
+                - 'emotional_tones' (Dict[str, float]): A dictionary of emotional tones and their scores.
+                - 'tone_context' (str): A contextual description of the top emotional tone combined with sentiment polarity.
         """
-        # VADER sentiment analysis
-        sentiment_scores = self.sentiment_analyzer.polarity_scores(text)
-        
-        # TextBlob for additional analysis
-        blob = TextBlob(text)
-        polarity = blob.sentiment.polarity
-        subjectivity = blob.sentiment.subjectivity
-        
-        # Get emotional tones
+        vader_scores = self.sentiment_analyzer.polarity_scores(text)
+        blob = TextBlob(text).sentiment
+
+        # Average polarity (safer)
+        polarity = (vader_scores['compound'] + blob.polarity) / 2
+        subjectivity = blob.subjectivity
+
         emotional_tones = self.analyze_emotional_tones(text)
+
+        # Top emotional tone
+        top_tone = max(emotional_tones.items(), key=lambda x: x[1])[0]
         
+        # Simple tone context rule
+        if polarity < -0.3:
+            tone_context = f"{top_tone} but Critical"
+        elif polarity > 0.3:
+            tone_context = f"{top_tone} and Supportive"
+        else:
+            tone_context = f"{top_tone} and Neutral"
+
         return {
             'polarity': polarity,
-            'compound': sentiment_scores['compound'],
+            'compound': vader_scores['compound'],
             'subjectivity': subjectivity,
-            'emotional_tones': emotional_tones
+            'emotional_tones': emotional_tones,
+            'tone_context': tone_context
         }
 
 class ResponseAggregator:
@@ -623,7 +615,7 @@ class ResponseAggregator:
         Args:
             query (str): The input query to process.
             question_type (str, optional): The type of question, used to apply a prefix to the query. Defaults to "none".
-        ethical_views (List[str], optional): A list of 1 or 3 ethical perspectives or ["None"] to skip role assignments.
+        ethical_views (List[str], optional): A list of atmost 3 ethical perspectives or ["None"] to skip role assignments.
         Returns:
             Dict[str, Any]: A dictionary containing the following keys:
                 - "query" (str): The original query.
@@ -1685,10 +1677,32 @@ async def process_query_background(job_id: str, query: str, question_type: str, 
             for model_id in MODELS.keys()
         } 
 
+        # Construct roles string, skip models with error responses
+        roles_list = []
+        # Assign roles only once for all agent_ids
+        agent_ids = [mid for mid in responses if mid != aggregator_id]
+        ethics_map = assign_ethics_to_agents(agent_ids, ethical_views)
+
+        for model_id, response in responses.items():
+            if isinstance(response, str) and not response.lower().startswith("error"):
+                if model_id == aggregator_id:
+                    role = "Aggregator"
+                else:
+                    # Use precomputed map
+                    role_full = ethics_map.get(model_id, "")
+                    role = [k for k, v in ETHICAL_VIEWS.items() if v == role_full]
+                    role = role[0] if role else ""
+
+                    if role:
+                        role = role.split('.')[0]  # Optional: shorten long ethics description
+                if role:
+                    roles_list.append(f"{model_id}: {role}")
+        roles_str = "; ".join(roles_list)
+
         # All models succeeded, safe to save
         db_manager.save_responses(job_id, model_responses, aggregator_id)
         # Save the interaction to database
-        db_manager.save_interaction(job_id, query, domain, question_type, username)
+        db_manager.save_interaction(job_id, query, domain, question_type, username, roles_str)
         
         # Calculate and save analysis
         consensus_score = 0

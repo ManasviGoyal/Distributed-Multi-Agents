@@ -592,11 +592,12 @@ def create_gradio_interface():
                     ],
                     value=["None"],
                     label="Choose Ethical View(s) for Agents",
-                    info="Select exactly 1 or 3 perspectives, or choose 'None' to skip ethics."
+                    info="Select upto ethical 3 perspectives, or choose 'None' to skip ethics."
                 )
 
                 ethical_warning_box = gr.Markdown("", visible=False)
-                
+                ethical_description_box = gr.Markdown("", visible=False)
+
                 question_type_options = question_types if question_types else []
                 question_type = gr.Radio(
                     choices=question_type_options,
@@ -684,8 +685,8 @@ def create_gradio_interface():
                 
                 # Use Gradio Dataframe with appropriate columns
                 history_list = gr.Dataframe(
-                    headers=["Time", "Query", "Domain", "Question Type", "Consensus"],
-                    datatype=["str", "str", "str", "str", "number"],
+                    headers=["Time", "Query", "Domain", "Question Type", "Consensus", "Roles"],
+                    datatype=["str", "str", "str", "str", "number", "str"],
                     interactive=False,
                     row_count=10
                 )
@@ -746,8 +747,10 @@ def create_gradio_interface():
                                                             
                             consensus = item.get("consensus_score", 0)
                             job_id = item["job_id"]
+                            roles = item.get("roles", "")
+
+                            rows.append([timestamp, preview, domain, question_type, consensus, roles])
                             
-                            rows.append([timestamp, preview, domain, question_type, consensus])
                             job_ids.append(job_id)
                         
                         return rows, job_ids
@@ -1168,31 +1171,50 @@ def create_gradio_interface():
 
                 def validate_ethical_selection(selected):
                     """
-                    Validates the user's selection of ethical perspectives.
-
-                    This function ensures that the selection adheres to the following rules:
-                    1. The option "None" cannot be selected alongside other ethical perspectives.
-                    2. If "None" is not selected, the user must select either exactly 1 or exactly 3 ethical perspectives.
+                    Validates the selection of ethical perspectives and provides corresponding warnings 
+                    and descriptions.
 
                     Args:
-                        selected (list): A list of strings representing the selected ethical perspectives.
+                        selected (list of str): A list of selected ethical perspectives. Each perspective 
+                                                should be one of the predefined options: 
+                                                ["Utilitarian", "Deontologist", "Virtue Ethicist", 
+                                                "Libertarian", "Rawlsian", "Precautionary", "None"].
 
                     Returns:
-                        gr.update: An update object for the UI, containing:
-                            - value (str): A warning message if the selection is invalid, or an empty string if valid.
-                            - visible (bool): A flag indicating whether the warning message should be displayed.
+                        tuple: A tuple containing two `gr.update` objects:
+                            - The first element updates the warning message, indicating if the selection 
+                              is invalid (e.g., selecting "None" with other perspectives or selecting an 
+                              invalid number of perspectives).
+                            - The second element updates the descriptions of the selected ethical 
+                              perspectives, formatted as a string with detailed explanations.
                     """
                     if "None" in selected and len(selected) > 1:
-                        return gr.update(value="⚠️ Cannot select 'None' with other ethical views.", visible=True)
-                    elif "None" not in selected and len(selected) not in [1, 3]:
-                        return gr.update(value="⚠️ Select either exactly 1 or 3 ethical perspectives.", visible=True)
+                        warning = "⚠️ Cannot select 'None' with other ethical views."
+                    elif "None" not in selected and len(selected) > 3:
+                        warning = "⚠️ You can select up to 3 ethical perspectives only."
                     else:
-                        return gr.update(value="", visible=False)
+                        warning = ""
+
+                    descriptions = {
+                        "Utilitarian": "👉 **Utilitarian**: Maximize overall well-being and minimize harm.",
+                        "Deontologist": "👉 **Deontologist**: Follow strict moral rules and duties.",
+                        "Virtue Ethicist": "👉 **Virtue Ethicist**: Act based on virtuous character traits like honesty or compassion.",
+                        "Libertarian": "👉 **Libertarian**: Prioritize individual freedom, consent, and autonomy.",
+                        "Rawlsian": "👉 **Rawlsian**: Maximize justice and fairness for the least advantaged.",
+                        "Precautionary": "👉 **Precautionary**: Avoid catastrophic risks and irreversible harm.",
+                        "None": "👉 **None**: Skip assigning any ethical role."
+                    }
+                    desc_lines = [descriptions[r] for r in selected if r in descriptions]
+
+                    return (
+                        gr.update(value=warning, visible=bool(warning)),
+                        gr.update(value="\n\n".join(desc_lines), visible=bool(desc_lines))
+                    )
 
                 ethical_view_selector.change(
                     fn=validate_ethical_selection,
                     inputs=[ethical_view_selector],
-                    outputs=[ethical_warning_box]
+                    outputs=[ethical_warning_box, ethical_description_box]
                 )
 
                 login_button.click(
