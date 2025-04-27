@@ -1039,10 +1039,12 @@ def create_gradio_interface():
                     if not is_valid_password(password):
                         return (
                             None,
-                            gr.update(visible=False), gr.update(visible=False),  # hide both
                             gr.update(visible=False), gr.update(visible=False),
                             gr.update(visible=False), gr.update(visible=False),
-                            gr.update(value="❌ Password must be at least 8 characters, include a lowercase, uppercase letter, and a number.")
+                            gr.update(visible=False), gr.update(visible=False),
+                            gr.update(value="❌ Password must be at least 8 characters, include a lowercase, uppercase letter, and a number."),
+                            gr.update(value=False),  # show_password_checkbox reset
+                            gr.update(type="password")  # password input reset
                         )
 
                     result = db.create_user(username, password)
