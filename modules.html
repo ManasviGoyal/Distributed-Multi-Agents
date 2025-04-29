@@ -111,7 +111,18 @@
 <li class="toctree-l3"><a class="reference internal" href="#server.update_aggregator"><code class="docutils literal notranslate"><span class="pre">update_aggregator()</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#client-module">client module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-client">client module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#client.create_env_template"><code class="docutils literal notranslate"><span class="pre">create_env_template()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#client.create_gradio_interface"><code class="docutils literal notranslate"><span class="pre">create_gradio_interface()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#client.fill_query_and_type"><code class="docutils literal notranslate"><span class="pre">fill_query_and_type()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#client.get_example_choices"><code class="docutils literal notranslate"><span class="pre">get_example_choices()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#client.init_client"><code class="docutils literal notranslate"><span class="pre">init_client()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#client.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#client.process_query"><code class="docutils literal notranslate"><span class="pre">process_query()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#client.update_aggregator"><code class="docutils literal notranslate"><span class="pre">update_aggregator()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#client.update_output_labels"><code class="docutils literal notranslate"><span class="pre">update_output_labels()</span></code></a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="#module-database_manager">database_manager module</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#database_manager.DatabaseManager"><code class="docutils literal notranslate"><span class="pre">DatabaseManager</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#database_manager.DatabaseManager.create_user"><code class="docutils literal notranslate"><span class="pre">DatabaseManager.create_user()</span></code></a></li>
@@ -831,8 +842,178 @@ specified <cite>new_aggregator_id</cite>.</p>
 </dd></dl>
 
 </section>
-<section id="client-module">
-<h2>client module<a class="headerlink" href="#client-module" title="Link to this heading"></a></h2>
+<section id="module-client">
+<span id="client-module"></span><h2>client module<a class="headerlink" href="#module-client" title="Link to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="client.create_env_template">
+<span class="sig-prename descclassname"><span class="pre">client.</span></span><span class="sig-name descname"><span class="pre">create_env_template</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/client.html#create_env_template"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#client.create_env_template" title="Link to this definition"></a></dt>
+<dd><p>Creates a <cite>.env</cite> file in the current working directory if it does not already exist.</p>
+<p>The <cite>.env</cite> file contains default configuration settings for the OpenRouter API, 
+including placeholders for the API key and backend URL.</p>
+<p>Contents of the generated <cite>.env</cite> file:
+- OPENROUTER_API_KEY: Placeholder for the OpenRouter API key.
+- BACKEND_URL: Default backend URL set to <cite>http://localhost:8000</cite>.</p>
+<p>This function ensures that the required environment configuration file is present 
+for the application to function correctly.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="client.create_gradio_interface">
+<span class="sig-prename descclassname"><span class="pre">client.</span></span><span class="sig-name descname"><span class="pre">create_gradio_interface</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/client.html#create_gradio_interface"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#client.create_gradio_interface" title="Link to this definition"></a></dt>
+<dd><p>Creates a Gradio interface for a Distributed Multi-Agent LLM System.
+This function initializes the Gradio application with multiple interactive components,
+including login/signup functionality, query submission, model response display, 
+analysis visualizations, and interaction history management. It also handles user 
+authentication, session management, and backend communication for processing queries 
+and retrieving historical data.</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>gr.Blocks: The Gradio Blocks application instance.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="client.fill_query_and_type">
+<span class="sig-prename descclassname"><span class="pre">client.</span></span><span class="sig-name descname"><span class="pre">fill_query_and_type</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">selected_example</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">domain</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/client.html#fill_query_and_type"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#client.fill_query_and_type" title="Link to this definition"></a></dt>
+<dd><p>Sends a POST request to the backend to fill in a query and determine the question type
+based on the provided example and domain.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>selected_example (str): The selected example to be processed.
+domain (str): The domain context for the query.</p>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>tuple: A tuple containing:</dt><dd><ul class="simple">
+<li><p>query (str): The filled query string. Returns an empty string if an error occurs.</p></li>
+<li><p>question_type (str): The type of the question. Defaults to “None” if not determined.</p></li>
+</ul>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="client.get_example_choices">
+<span class="sig-prename descclassname"><span class="pre">client.</span></span><span class="sig-name descname"><span class="pre">get_example_choices</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/client.html#get_example_choices"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#client.get_example_choices" title="Link to this definition"></a></dt>
+<dd><p>Fetches example choices for a given domain from a backend service.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>domain (str): The domain for which to fetch example choices. </dt><dd><p>If the domain is None or empty, an empty list of choices is returned.</p>
+</dd>
+</dl>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>gr.update: An object containing the updated choices and value. </dt><dd><ul class="simple">
+<li><p>If successful, the choices are populated with examples fetched from the backend.</p></li>
+<li><p>If the request fails or an error occurs, the choices are empty.</p></li>
+</ul>
+</dd>
+</dl>
+</dd>
+<dt>Raises:</dt><dd><p>Logs errors if the backend request fails or an exception occurs during execution.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="client.init_client">
+<span class="sig-prename descclassname"><span class="pre">client.</span></span><span class="sig-name descname"><span class="pre">init_client</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">retries</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">delay</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1.5</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="_modules/client.html#init_client"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#client.init_client" title="Link to this definition"></a></dt>
+<dd><p>Initializes the client by attempting to connect to the backend and fetching necessary data.</p>
+<p>This function tries to establish a connection to the backend server and retrieve information
+such as model details, domains, question types, and examples. It retries the connection
+a specified number of times with a delay between attempts if the connection fails.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>retries (int): The maximum number of connection attempts. Defaults to 3.
+delay (float): The delay (in seconds) between consecutive connection attempts. Defaults to 1.5.</p>
+</dd>
+<dt>Returns:</dt><dd><p>bool: True if the connection and data retrieval are successful, False otherwise.</p>
+</dd>
+<dt>Raises:</dt><dd><p>None: All exceptions are caught and logged, and the function will return False
+if the connection fails after the specified number of retries.</p>
+</dd>
+<dt>Global Variables:</dt><dd><p>model_info (dict): Stores information about models retrieved from the backend.
+domains (dict): Stores domain data retrieved from the backend.
+question_types (list): Stores question types retrieved from the backend.
+examples_by_domain (dict): Stores examples categorized by domain retrieved from the backend.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="client.main">
+<span class="sig-prename descclassname"><span class="pre">client.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/client.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#client.main" title="Link to this definition"></a></dt>
+<dd><p>The main function for the Multi-Agent LLM Client application. This function
+parses command-line arguments, updates the backend URL, creates a .env 
+template, and launches a Gradio interface.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="client.process_query">
+<span class="sig-prename descclassname"><span class="pre">client.</span></span><span class="sig-name descname"><span class="pre">process_query</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">api_key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">question_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">domain</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aggregator_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ethical_views</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">session</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">progress</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">gradio.Progress</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/client.html#process_query"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#client.process_query" title="Link to this definition"></a></dt>
+<dd><p>Processes a user query by sending it to a backend service, polling for the job status, 
+and retrieving the results, including responses from models, analysis, and visualizations.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>query (str): The user query to be processed.
+api_key (str): The API key for authentication with the backend.
+question_type (str): The type of question being asked.
+domain (str): The domain or context of the query.
+aggregator_id (str): The ID of the aggregator model to be used.
+session (str): The session or username for tracking the request.
+progress (gr.Progress, optional): A progress tracker for updating the UI.</p>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>list: Contains:</dt><dd><ul class="simple">
+<li><p>str: Aggregator model response or error message.</p></li>
+<li><p>str: Responses from up to three non-aggregator models.</p></li>
+<li><p>float: Consensus score.</p></li>
+<li><p>Image or None: Visualizations (heatmap, emotion, polarity, radar).</p></li>
+<li><p>gr.update: Updates for warnings and model labels.</p></li>
+</ul>
+</dd>
+</dl>
+</dd>
+<dt>Raises:</dt><dd><p>Exception: For errors during query processing, including network or backend issues.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="client.update_aggregator">
+<span class="sig-prename descclassname"><span class="pre">client.</span></span><span class="sig-name descname"><span class="pre">update_aggregator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">aggregator_id</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/client.html#update_aggregator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#client.update_aggregator" title="Link to this definition"></a></dt>
+<dd><p>Updates the aggregator model on the backend server.</p>
+<p>This function sends a POST request to the backend server to update the 
+aggregator model identified by the given <cite>aggregator_id</cite>. If the request 
+is successful, the updated aggregator ID is returned. Otherwise, an error 
+is logged, and <cite>None</cite> is returned.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>aggregator_id (str): The unique identifier of the aggregator to update.</p>
+</dd>
+<dt>Returns:</dt><dd><p>str or None: The updated aggregator ID if the request is successful, 
+or <cite>None</cite> if the request fails or an exception occurs.</p>
+</dd>
+<dt>Raises:</dt><dd><p>None: Any exceptions are caught and logged.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="client.update_output_labels">
+<span class="sig-prename descclassname"><span class="pre">client.</span></span><span class="sig-name descname"><span class="pre">update_output_labels</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">aggregator_id</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/client.html#update_output_labels"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#client.update_output_labels" title="Link to this definition"></a></dt>
+<dd><p>Updates the output labels for the aggregator and agent models based on the 
+provided aggregator ID and the model information retrieved from the backend.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>aggregator_id (str): The ID of the aggregator whose labels need to be updated.</p>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>dict: A dictionary containing updated labels for the aggregator and up to </dt><dd><p>three agent models. The keys correspond to the output components 
+(e.g., <cite>output_aggregator</cite>, <cite>output_model1</cite>, <cite>output_model2</cite>, <cite>output_model3</cite>), 
+and the values are <cite>gr.update</cite> objects with the new labels.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
 </section>
 <section id="module-database_manager">
 <span id="database-manager-module"></span><h2>database_manager module<a class="headerlink" href="#module-database_manager" title="Link to this heading"></a></h2>
