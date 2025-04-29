@@ -78,7 +78,7 @@
 <span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">()</span>
 
 <span class="c1"># Define backend servers</span>
-<span class="n">BACKENDS</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;http://localhost:8001&quot;</span><span class="p">,</span> <span class="s2">&quot;http://localhost:8002&quot;</span><span class="p">,</span> <span class="s2">&quot;http://localhost:8003&quot;</span><span class="p">]</span>
+<span class="n">BACKENDS</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;http://172.31.34.248:8001&quot;</span><span class="p">,</span> <span class="s2">&quot;http://172.31.34.248:8002&quot;</span><span class="p">,</span> <span class="s2">&quot;http://172.31.34.248:8003&quot;</span><span class="p">]</span>
 <span class="n">backend_cycle</span> <span class="o">=</span> <span class="n">itertools</span><span class="o">.</span><span class="n">cycle</span><span class="p">(</span><span class="n">BACKENDS</span><span class="p">)</span>
 <span class="n">MAX_RETRIES</span> <span class="o">=</span> <span class="mi">3</span>
 
