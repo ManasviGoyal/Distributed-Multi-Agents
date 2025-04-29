@@ -1,0 +1,59 @@
+# === Python Bytecode ===
+**/__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# === Virtual Environments ===
+.venv/
+venv/
+env/
+ENV/
+*.egg-info/
+pip-wheel-metadata/
+
+# === Environment Files ===
+.env
+.env.*
+
+# === Logs & Local Databases ===
+*.log
+*.sqlite3
+*.db
+agent_history.db
+
+# === OS Files ===
+.DS_Store
+Thumbs.db
+
+# === Testing & Coverage ===
+htmlcov/
+.coverage
+.pytest_cache/
+.cache/
+
+# === IDEs & Editors ===
+.vscode/
+.idea/
+*.swp
+
+# === Gradio Cache ===
+gradio_cached_examples/
+
+# === Jupyter ===
+.ipynb_checkpoints/
+
+# === HuggingFace Transformers Cache ===
+~/.cache/huggingface/
+~/.huggingface/
+
+# === Build Artifacts ===
+build/
+dist/
+*.egg
+*.manifest
+*.spec
+
+# === FastAPI Static Files (if dynamically created) ===
+static/
