@@ -44,19 +44,74 @@
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Application Modules</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#server-module">server module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#module-client">client module</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#client.create_env_template"><code class="docutils literal notranslate"><span class="pre">create_env_template()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#client.create_gradio_interface"><code class="docutils literal notranslate"><span class="pre">create_gradio_interface()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#client.fill_query_and_type"><code class="docutils literal notranslate"><span class="pre">fill_query_and_type()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#client.get_example_choices"><code class="docutils literal notranslate"><span class="pre">get_example_choices()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#client.init_client"><code class="docutils literal notranslate"><span class="pre">init_client()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#client.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#client.process_query"><code class="docutils literal notranslate"><span class="pre">process_query()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#client.update_aggregator"><code class="docutils literal notranslate"><span class="pre">update_aggregator()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#client.update_output_labels"><code class="docutils literal notranslate"><span class="pre">update_output_labels()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-server">server module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#server.AggregatorRequest"><code class="docutils literal notranslate"><span class="pre">AggregatorRequest</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#server.AggregatorRequest.aggregator_id"><code class="docutils literal notranslate"><span class="pre">AggregatorRequest.aggregator_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#server.AggregatorRequest.model_config"><code class="docutils literal notranslate"><span class="pre">AggregatorRequest.model_config</span></code></a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="#server.ExampleRequest"><code class="docutils literal notranslate"><span class="pre">ExampleRequest</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#server.ExampleRequest.domain"><code class="docutils literal notranslate"><span class="pre">ExampleRequest.domain</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#server.ExampleRequest.model_config"><code class="docutils literal notranslate"><span class="pre">ExampleRequest.model_config</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#server.FillQueryRequest"><code class="docutils literal notranslate"><span class="pre">FillQueryRequest</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#server.FillQueryRequest.domain"><code class="docutils literal notranslate"><span class="pre">FillQueryRequest.domain</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#server.FillQueryRequest.model_config"><code class="docutils literal notranslate"><span class="pre">FillQueryRequest.model_config</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#server.FillQueryRequest.selected_example"><code class="docutils literal notranslate"><span class="pre">FillQueryRequest.selected_example</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#server.OpenRouterClient"><code class="docutils literal notranslate"><span class="pre">OpenRouterClient</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#server.OpenRouterClient.analyze_emotional_tones"><code class="docutils literal notranslate"><span class="pre">OpenRouterClient.analyze_emotional_tones()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#server.OpenRouterClient.analyze_sentiment"><code class="docutils literal notranslate"><span class="pre">OpenRouterClient.analyze_sentiment()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#server.OpenRouterClient.generate_response"><code class="docutils literal notranslate"><span class="pre">OpenRouterClient.generate_response()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#server.OpenRouterClient.get_embeddings"><code class="docutils literal notranslate"><span class="pre">OpenRouterClient.get_embeddings()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#server.QueryRequest"><code class="docutils literal notranslate"><span class="pre">QueryRequest</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#server.QueryRequest.aggregator_id"><code class="docutils literal notranslate"><span class="pre">QueryRequest.aggregator_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#server.QueryRequest.api_key"><code class="docutils literal notranslate"><span class="pre">QueryRequest.api_key</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#server.QueryRequest.domain"><code class="docutils literal notranslate"><span class="pre">QueryRequest.domain</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#server.QueryRequest.ethical_views"><code class="docutils literal notranslate"><span class="pre">QueryRequest.ethical_views</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#server.QueryRequest.model_config"><code class="docutils literal notranslate"><span class="pre">QueryRequest.model_config</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#server.QueryRequest.query"><code class="docutils literal notranslate"><span class="pre">QueryRequest.query</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#server.QueryRequest.question_type"><code class="docutils literal notranslate"><span class="pre">QueryRequest.question_type</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#server.QueryRequest.username"><code class="docutils literal notranslate"><span class="pre">QueryRequest.username</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#server.ResponseAggregator"><code class="docutils literal notranslate"><span class="pre">ResponseAggregator</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#server.ResponseAggregator.analyze_responses"><code class="docutils literal notranslate"><span class="pre">ResponseAggregator.analyze_responses()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#server.ResponseAggregator.generate_consensus_summary"><code class="docutils literal notranslate"><span class="pre">ResponseAggregator.generate_consensus_summary()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#server.ResponseAggregator.process_query"><code class="docutils literal notranslate"><span class="pre">ResponseAggregator.process_query()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#server.api_agent_health"><code class="docutils literal notranslate"><span class="pre">api_agent_health()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#server.api_delete_history_item"><code class="docutils literal notranslate"><span class="pre">api_delete_history_item()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#server.api_fill_query_and_type"><code class="docutils literal notranslate"><span class="pre">api_fill_query_and_type()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#server.api_get_domains"><code class="docutils literal notranslate"><span class="pre">api_get_domains()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#server.api_get_example_choices"><code class="docutils literal notranslate"><span class="pre">api_get_example_choices()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#server.api_get_examples"><code class="docutils literal notranslate"><span class="pre">api_get_examples()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#server.api_get_history"><code class="docutils literal notranslate"><span class="pre">api_get_history()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#server.api_get_image"><code class="docutils literal notranslate"><span class="pre">api_get_image()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#server.api_get_models"><code class="docutils literal notranslate"><span class="pre">api_get_models()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#server.api_get_question_types"><code class="docutils literal notranslate"><span class="pre">api_get_question_types()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#server.api_job_result"><code class="docutils literal notranslate"><span class="pre">api_job_result()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#server.api_job_status"><code class="docutils literal notranslate"><span class="pre">api_job_status()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#server.api_process_query"><code class="docutils literal notranslate"><span class="pre">api_process_query()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#server.api_reset_agent"><code class="docutils literal notranslate"><span class="pre">api_reset_agent()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#server.api_update_aggregator"><code class="docutils literal notranslate"><span class="pre">api_update_aggregator()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#server.assign_ethics_to_agents"><code class="docutils literal notranslate"><span class="pre">assign_ethics_to_agents()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#server.check_agent_health"><code class="docutils literal notranslate"><span class="pre">check_agent_health()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#server.format_model_name"><code class="docutils literal notranslate"><span class="pre">format_model_name()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#server.lifespan"><code class="docutils literal notranslate"><span class="pre">lifespan()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#server.process_query_background"><code class="docutils literal notranslate"><span class="pre">process_query_background()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#server.reset_failed_agent"><code class="docutils literal notranslate"><span class="pre">reset_failed_agent()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#server.root"><code class="docutils literal notranslate"><span class="pre">root()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#server.update_agent_heartbeat"><code class="docutils literal notranslate"><span class="pre">update_agent_heartbeat()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#server.update_aggregator"><code class="docutils literal notranslate"><span class="pre">update_aggregator()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#client-module">client module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-database_manager">database_manager module</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#database_manager.DatabaseManager"><code class="docutils literal notranslate"><span class="pre">DatabaseManager</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#database_manager.DatabaseManager.create_user"><code class="docutils literal notranslate"><span class="pre">DatabaseManager.create_user()</span></code></a></li>
@@ -110,52 +165,144 @@
   <section id="application-modules">
 <h1>Application Modules<a class="headerlink" href="#application-modules" title="Link to this heading"></a></h1>
 <p>This section provides documentation for each Python module in the Distributed Multi Agent LLMs application.</p>
-<section id="server-module">
-<h2>server module<a class="headerlink" href="#server-module" title="Link to this heading"></a></h2>
-</section>
-<section id="module-client">
-<span id="client-module"></span><h2>client module<a class="headerlink" href="#module-client" title="Link to this heading"></a></h2>
-<dl class="py function">
-<dt class="sig sig-object py" id="client.create_env_template">
-<span class="sig-prename descclassname"><span class="pre">client.</span></span><span class="sig-name descname"><span class="pre">create_env_template</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/client.html#create_env_template"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#client.create_env_template" title="Link to this definition"></a></dt>
-<dd><p>Creates a <cite>.env</cite> file in the current working directory if it does not already exist.</p>
-<p>The <cite>.env</cite> file contains default configuration settings for the OpenRouter API, 
-including placeholders for the API key and backend URL.</p>
-<p>Contents of the generated <cite>.env</cite> file:
-- OPENROUTER_API_KEY: Placeholder for the OpenRouter API key.
-- BACKEND_URL: Default backend URL set to <cite>http://localhost:8000</cite>.</p>
-<p>This function ensures that the required environment configuration file is present 
-for the application to function correctly.</p>
+<section id="module-server">
+<span id="server-module"></span><h2>server module<a class="headerlink" href="#module-server" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="server.AggregatorRequest">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">server.</span></span><span class="sig-name descname"><span class="pre">AggregatorRequest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">aggregator_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/server.html#AggregatorRequest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#server.AggregatorRequest" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseModel</span></code></p>
+<p>Represents a request model for an aggregator.</p>
+<dl class="simple">
+<dt>Attributes:</dt><dd><p>aggregator_id (str): A unique identifier for the aggregator.</p>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.AggregatorRequest.aggregator_id">
+<span class="sig-name descname"><span class="pre">aggregator_id</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#server.AggregatorRequest.aggregator_id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.AggregatorRequest.model_config">
+<span class="sig-name descname"><span class="pre">model_config</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">ConfigDict</span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{}</span></em><a class="headerlink" href="#server.AggregatorRequest.model_config" title="Link to this definition"></a></dt>
+<dd><p>Configuration for the model, should be a dictionary conforming to [<cite>ConfigDict</cite>][pydantic.config.ConfigDict].</p>
 </dd></dl>
 
-<dl class="py function">
-<dt class="sig sig-object py" id="client.create_gradio_interface">
-<span class="sig-prename descclassname"><span class="pre">client.</span></span><span class="sig-name descname"><span class="pre">create_gradio_interface</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/client.html#create_gradio_interface"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#client.create_gradio_interface" title="Link to this definition"></a></dt>
-<dd><p>Creates a Gradio interface for a Distributed Multi-Agent LLM System.
-This function initializes the Gradio application with multiple interactive components,
-including login/signup functionality, query submission, model response display, 
-analysis visualizations, and interaction history management. It also handles user 
-authentication, session management, and backend communication for processing queries 
-and retrieving historical data.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="server.ExampleRequest">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">server.</span></span><span class="sig-name descname"><span class="pre">ExampleRequest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/server.html#ExampleRequest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#server.ExampleRequest" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseModel</span></code></p>
+<p>ExampleRequest is a data model representing a request structure.</p>
 <dl class="simple">
-<dt>Returns:</dt><dd><p>gr.Blocks: The Gradio Blocks application instance.</p>
+<dt>Attributes:</dt><dd><p>domain (str): The domain name or identifier associated with the request.</p>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.ExampleRequest.domain">
+<span class="sig-name descname"><span class="pre">domain</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#server.ExampleRequest.domain" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.ExampleRequest.model_config">
+<span class="sig-name descname"><span class="pre">model_config</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">ConfigDict</span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{}</span></em><a class="headerlink" href="#server.ExampleRequest.model_config" title="Link to this definition"></a></dt>
+<dd><p>Configuration for the model, should be a dictionary conforming to [<cite>ConfigDict</cite>][pydantic.config.ConfigDict].</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="server.FillQueryRequest">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">server.</span></span><span class="sig-name descname"><span class="pre">FillQueryRequest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">selected_example</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/server.html#FillQueryRequest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#server.FillQueryRequest" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseModel</span></code></p>
+<p>FillQueryRequest is a data model representing a request to fill a query.</p>
+<dl class="simple">
+<dt>Attributes:</dt><dd><p>selected_example (str): The selected example to be used in the query.
+domain (str): The domain or context in which the query is being executed.</p>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.FillQueryRequest.domain">
+<span class="sig-name descname"><span class="pre">domain</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#server.FillQueryRequest.domain" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.FillQueryRequest.model_config">
+<span class="sig-name descname"><span class="pre">model_config</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">ConfigDict</span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{}</span></em><a class="headerlink" href="#server.FillQueryRequest.model_config" title="Link to this definition"></a></dt>
+<dd><p>Configuration for the model, should be a dictionary conforming to [<cite>ConfigDict</cite>][pydantic.config.ConfigDict].</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.FillQueryRequest.selected_example">
+<span class="sig-name descname"><span class="pre">selected_example</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#server.FillQueryRequest.selected_example" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="server.OpenRouterClient">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">server.</span></span><span class="sig-name descname"><span class="pre">OpenRouterClient</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">api_key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">site_url</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">site_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/server.html#OpenRouterClient"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#server.OpenRouterClient" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>OpenRouterClient is a class designed to interact with the OpenRouter API for generating responses,
+analyzing text embeddings, and performing sentiment and emotional tone analysis.</p>
+<dl class="simple">
+<dt>Attributes:</dt><dd><p>api_key (str): The API key used for authenticating with the OpenRouter API.
+site_url (str, optional): The URL of the site making the request, used for HTTP-Referer header.
+site_name (str, optional): The name of the site making the request, used for X-Title header.
+url (str): The endpoint URL for the OpenRouter API.
+sentence_encoder (SentenceTransformer): A pre-trained model for generating text embeddings.
+sentiment_analyzer (SentimentIntensityAnalyzer): A VADER sentiment analyzer for sentiment analysis.</p>
+</dd>
+<dt>Methods:</dt><dd><dl class="simple">
+<dt>generate_response(model_name: str, prompt: str, temperature: float = 0.7) -&gt; str:</dt><dd><p>Asynchronously generates a response from a specified model via the OpenRouter API.
+Includes fault tolerance and error handling for API failures.</p>
+</dd>
+<dt>get_embeddings(texts: List[str]) -&gt; np.ndarray:</dt><dd><p>Generates embeddings for a list of input texts using a pre-trained sentence transformer.</p>
+</dd>
+<dt>analyze_emotional_tones(text: str) -&gt; Dict[str, float]:</dt><dd><p>Analyzes emotional tones in the input text using pattern matching and sentiment analysis.
+Returns a dictionary of emotional tone scores.</p>
+</dd>
+<dt>analyze_sentiment(text: str) -&gt; Dict[str, Any]:</dt><dd><p>Analyzes the sentiment of the input text using VADER and TextBlob.
+Returns a dictionary containing polarity, compound score, subjectivity, and emotional tones.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="server.OpenRouterClient.analyze_emotional_tones">
+<span class="sig-name descname"><span class="pre">analyze_emotional_tones</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/server.html#OpenRouterClient.analyze_emotional_tones"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#server.OpenRouterClient.analyze_emotional_tones" title="Link to this definition"></a></dt>
+<dd><p>Analyze the emotional tones present in a given text.</p>
+<p>This method evaluates the input text for specific emotional tones such as 
+Empathetic, Judgmental, Analytical, Ambivalent, Defensive, and Curious. 
+It uses predefined regex patterns to detect tone-related keywords and 
+incorporates sentiment analysis using VADER to adjust tone scores.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>text (str): The input text to analyze.</p>
+</dd>
+<dt>Returns:</dt><dd><p>Dict[str, float]: A dictionary where keys are emotional tone categories 
+and values are their respective normalized scores (rounded to 4 decimal places).
+The scores represent the relative presence of each tone in the text.</p>
 </dd>
 </dl>
 </dd></dl>
 
-<dl class="py function">
-<dt class="sig sig-object py" id="client.fill_query_and_type">
-<span class="sig-prename descclassname"><span class="pre">client.</span></span><span class="sig-name descname"><span class="pre">fill_query_and_type</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">selected_example</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">domain</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/client.html#fill_query_and_type"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#client.fill_query_and_type" title="Link to this definition"></a></dt>
-<dd><p>Sends a POST request to the backend to fill in a query and determine the question type
-based on the provided example and domain.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="server.OpenRouterClient.analyze_sentiment">
+<span class="sig-name descname"><span class="pre">analyze_sentiment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/server.html#OpenRouterClient.analyze_sentiment"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#server.OpenRouterClient.analyze_sentiment" title="Link to this definition"></a></dt>
+<dd><p>Analyzes the sentiment and emotional tone of the given text.
+This method combines sentiment analysis from VADER and TextBlob to calculate
+an average polarity and subjectivity score. It also evaluates emotional tones
+and determines a contextual tone based on the polarity.</p>
 <dl class="simple">
-<dt>Args:</dt><dd><p>selected_example (str): The selected example to be processed.
-domain (str): The domain context for the query.</p>
+<dt>Args:</dt><dd><p>text (str): The input text to analyze.</p>
 </dd>
 <dt>Returns:</dt><dd><dl class="simple">
-<dt>tuple: A tuple containing:</dt><dd><ul class="simple">
-<li><p>query (str): The filled query string. Returns an empty string if an error occurs.</p></li>
-<li><p>question_type (str): The type of the question. Defaults to “None” if not determined.</p></li>
+<dt>Dict[str, Any]: A dictionary containing the following keys:</dt><dd><ul class="simple">
+<li><p>‘polarity’ (float): The average polarity score from VADER and TextBlob.</p></li>
+<li><p>‘compound’ (float): The compound sentiment score from VADER.</p></li>
+<li><p>‘subjectivity’ (float): The subjectivity score from TextBlob.</p></li>
+<li><p>‘emotional_tones’ (Dict[str, float]): A dictionary of emotional tones and their scores.</p></li>
+<li><p>‘tone_context’ (str): A contextual description of the top emotional tone combined with sentiment polarity.</p></li>
 </ul>
 </dd>
 </dl>
@@ -163,128 +310,529 @@ domain (str): The domain context for the query.</p>
 </dl>
 </dd></dl>
 
+<dl class="py method">
+<dt class="sig sig-object py" id="server.OpenRouterClient.generate_response">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">generate_response</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prompt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temperature</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.7</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="_modules/server.html#OpenRouterClient.generate_response"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#server.OpenRouterClient.generate_response" title="Link to this definition"></a></dt>
+<dd><p>Asynchronously generates a response from a specified model based on the given prompt.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>model_name (str): The name of the model to use for generating the response.
+prompt (str): The input prompt to send to the model.
+temperature (float, optional): The sampling temperature for the model’s response.</p>
+</dd>
+<dt>Returns:</dt><dd><p>str: The generated response from the model, or an error message if the operation fails.</p>
+</dd>
+<dt>Raises:</dt><dd><p>asyncio.TimeoutError: If the API request times out.
+Exception: For any other unexpected errors during the process.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="server.OpenRouterClient.get_embeddings">
+<span class="sig-name descname"><span class="pre">get_embeddings</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">texts</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="reference internal" href="_modules/server.html#OpenRouterClient.get_embeddings"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#server.OpenRouterClient.get_embeddings" title="Link to this definition"></a></dt>
+<dd><p>Generate embeddings for a list of input texts.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>texts (List[str]): A list of strings for which embeddings are to be generated.</p>
+</dd>
+<dt>Returns:</dt><dd><p>np.ndarray: A NumPy array containing the embeddings for the input texts.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="server.QueryRequest">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">server.</span></span><span class="sig-name descname"><span class="pre">QueryRequest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">api_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">question_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'None'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'None'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aggregator_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">username</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ethical_views</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">[]</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/server.html#QueryRequest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#server.QueryRequest" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseModel</span></code></p>
+<p>QueryRequest is a data model representing the structure of a query request.</p>
+<dl class="simple">
+<dt>Attributes:</dt><dd><p>query (str): The query string provided by the user.
+api_key (str, optional): An optional API key for authentication. Defaults to None.
+question_type (str): The type of question being asked. Defaults to “None”.
+domain (str): The domain or context of the query. Defaults to “None”.
+aggregator_id (str, optional): An optional identifier for the aggregator. Defaults to None.
+username (str): The username of the individual making the query.</p>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.QueryRequest.aggregator_id">
+<span class="sig-name descname"><span class="pre">aggregator_id</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#server.QueryRequest.aggregator_id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.QueryRequest.api_key">
+<span class="sig-name descname"><span class="pre">api_key</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#server.QueryRequest.api_key" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.QueryRequest.domain">
+<span class="sig-name descname"><span class="pre">domain</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#server.QueryRequest.domain" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.QueryRequest.ethical_views">
+<span class="sig-name descname"><span class="pre">ethical_views</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#server.QueryRequest.ethical_views" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.QueryRequest.model_config">
+<span class="sig-name descname"><span class="pre">model_config</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">ConfigDict</span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{}</span></em><a class="headerlink" href="#server.QueryRequest.model_config" title="Link to this definition"></a></dt>
+<dd><p>Configuration for the model, should be a dictionary conforming to [<cite>ConfigDict</cite>][pydantic.config.ConfigDict].</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.QueryRequest.query">
+<span class="sig-name descname"><span class="pre">query</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#server.QueryRequest.query" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.QueryRequest.question_type">
+<span class="sig-name descname"><span class="pre">question_type</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#server.QueryRequest.question_type" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.QueryRequest.username">
+<span class="sig-name descname"><span class="pre">username</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#server.QueryRequest.username" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="server.ResponseAggregator">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">server.</span></span><span class="sig-name descname"><span class="pre">ResponseAggregator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">openrouter_client</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/server.html#ResponseAggregator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#server.ResponseAggregator" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>This class is responsible for processing queries through multiple AI models, aggregating their responses, 
+and generating a consensus summary. It also provides analysis of the responses, including sentiment, 
+similarity, and visualization of key metrics.</p>
+<dl class="simple">
+<dt>Attributes:</dt><dd><p>client (Any): The client used to interact with AI models for generating responses.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="server.ResponseAggregator.analyze_responses">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">analyze_responses</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">responses</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/server.html#ResponseAggregator.analyze_responses"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#server.ResponseAggregator.analyze_responses" title="Link to this definition"></a></dt>
+<dd><p>Analyze the responses from different models and generate insights. This method 
+processes the responses from various models, performs sentiment analysis,
+calculates similarity metrics, and generates visualizations to provide insights into
+the responses. If there are fewer than two valid responses, it skips the visual analysis
+and returns basic metrics with a warning.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>query (str): The input query for which the responses were generated.
+responses (Dict[str, str]): A dictionary model IDs as keys and responses as values.</p>
+</dd>
+<dt>Returns:</dt><dd><p>Dict[str, Any]: A dictionary containing the some keys.</p>
+</dd>
+<dt>Raises:</dt><dd><p>Exception: If an error occurs during the analysis process.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="server.ResponseAggregator.generate_consensus_summary">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">generate_consensus_summary</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">responses</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aggregator_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="_modules/server.html#ResponseAggregator.generate_consensus_summary"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#server.ResponseAggregator.generate_consensus_summary" title="Link to this definition"></a></dt>
+<dd><p>Generate a summarized consensus from all model responses using the aggregator model.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>query (str): The query or prompt that was provided to the models.
+responses (Dict[str, str]): A dictionary mapping model IDs to their respective responses.
+aggregator_id (str): The ID of the designated aggregator model.</p>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>str: A comprehensive consensus summary generated by the aggregator model. If all models fail </dt><dd><p>or encounter errors, a fallback message is returned indicating the inability to generate a summary.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="server.ResponseAggregator.process_query">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">process_query</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">question_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'none'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ethical_views</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">['None']</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/server.html#ResponseAggregator.process_query"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#server.ResponseAggregator.process_query" title="Link to this definition"></a></dt>
+<dd><p>Process a query through multiple agent models, aggregate their responses, and provide a consensus summary.
+This method performs the following steps:
+1. Formats the query based on the specified question type.
+2. Checks the health of agent models and selects up to three healthy models for processing.
+3. Sends the query to the selected models asynchronously and collects their responses.
+4. Identifies an aggregator model to summarize the responses, with failover to backup models if necessary.
+5. Generates a consensus summary using the aggregator model.
+6. Analyzes the responses and returns the results.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>query (str): The input query to process.
+question_type (str, optional): The type of question, used to apply a prefix to the query. Defaults to “none”.
+ethical_views (List[str], optional): A list of atmost 3 ethical perspectives or [“None”] to skip role assignments.</p>
+</dd>
+<dt>Returns:</dt><dd><p>Dict[str, Any]: A dictionary containing the some keys.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
 <dl class="py function">
-<dt class="sig sig-object py" id="client.get_example_choices">
-<span class="sig-prename descclassname"><span class="pre">client.</span></span><span class="sig-name descname"><span class="pre">get_example_choices</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/client.html#get_example_choices"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#client.get_example_choices" title="Link to this definition"></a></dt>
-<dd><p>Fetches example choices for a given domain from a backend service.</p>
+<dt class="sig sig-object py" id="server.api_agent_health">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">server.</span></span><span class="sig-name descname"><span class="pre">api_agent_health</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#server.api_agent_health" title="Link to this definition"></a></dt>
+<dd><p>Asynchronously checks the health of agents and formats the health status response.
+This function calls <cite>check_agent_health()</cite> to update the health status of agents.
+It then processes the <cite>agent_health</cite> dictionary to create a formatted response
+containing the health status of each agent, including the time since the last
+heartbeat, the number of failures, and retries.</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>dict: A dictionary where each key is a model ID and the value is another
+dictionary.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="server.api_delete_history_item">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">server.</span></span><span class="sig-name descname"><span class="pre">api_delete_history_item</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">job_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">username</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#server.api_delete_history_item" title="Link to this definition"></a></dt>
+<dd><p>Delete an interaction from the user’s history.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>job_id (str): The unique identifier of the job or interaction to be deleted.
+username (str): The username of the user whose interaction history is being modified.</p>
+</dd>
+<dt>Returns:</dt><dd><p>dict: A dictionary indicating the success of the operation with a key “success” set to True if the deletion was successful.</p>
+</dd>
+<dt>Raises:</dt><dd><p>HTTPException: If the deletion fails or an unexpected error occurs, an HTTPException is raised with a status code of 500 and an appropriate error message.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="server.api_fill_query_and_type">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">server.</span></span><span class="sig-name descname"><span class="pre">api_fill_query_and_type</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#server.FillQueryRequest" title="server.FillQueryRequest"><span class="pre">FillQueryRequest</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#server.api_fill_query_and_type" title="Link to this definition"></a></dt>
+<dd><p>Handles the API request to fill a query and its corresponding question type 
+based on a selected example.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>request (FillQueryRequest): The request object containing the domain 
+and the selected example.</p>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>dict: A dictionary containing:</dt><dd><ul class="simple">
+<li><p>“query” (str): The query string from the selected example.</p></li>
+<li><p>“question_type” (str): The type of question associated with the query.
+Returns “None” if no matching example is found.</p></li>
+</ul>
+</dd>
+</dl>
+</dd>
+<dt>Raises:</dt><dd><p>HTTPException: If an unexpected error occurs, returns a 500 status code 
+with the error details.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="server.api_get_domains">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">server.</span></span><span class="sig-name descname"><span class="pre">api_get_domains</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#server.api_get_domains" title="Link to this definition"></a></dt>
+<dd><p>Asynchronous function to retrieve a list of domains.</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>dict: A dictionary containing the key “domains” mapped to the value of the global variable <cite>DOMAINS</cite>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="server.api_get_example_choices">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">server.</span></span><span class="sig-name descname"><span class="pre">api_get_example_choices</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#server.ExampleRequest" title="server.ExampleRequest"><span class="pre">ExampleRequest</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#server.api_get_example_choices" title="Link to this definition"></a></dt>
+<dd><p>Get example choices for a domain</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="server.api_get_examples">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">server.</span></span><span class="sig-name descname"><span class="pre">api_get_examples</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#server.api_get_examples" title="Link to this definition"></a></dt>
+<dd><p>Asynchronous function to retrieve example data.</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>dict: A dictionary containing examples categorized by domain.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="server.api_get_history">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">server.</span></span><span class="sig-name descname"><span class="pre">api_get_history</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">username</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">limit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">50</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#server.api_get_history" title="Link to this definition"></a></dt>
+<dd><p>Fetches the interaction history for a specified user.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>username (str): The username of the user whose interaction history is to be retrieved.
+limit (int, optional): The maximum number of history records to retrieve. Defaults to 50.</p>
+</dd>
+<dt>Returns:</dt><dd><p>dict: A dictionary containing the user’s interaction history under the key “history”.</p>
+</dd>
+<dt>Raises:</dt><dd><p>HTTPException: If an error occurs while retrieving the history, an HTTP 500 error is raised with the error details.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="server.api_get_image">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">server.</span></span><span class="sig-name descname"><span class="pre">api_get_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">job_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">image_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#server.api_get_image" title="Link to this definition"></a></dt>
+<dd><p>Retrieve a specific type of image associated with a completed job.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>job_id (str): The unique identifier of the job.
+image_type (str): The type of image to retrieve.</p>
+</dd>
+<dt>Raises:</dt><dd><p>HTTPException: error codes</p>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>StreamingResponse: A streaming response containing the requested image </dt><dd><p>in PNG format.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="server.api_get_models">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">server.</span></span><span class="sig-name descname"><span class="pre">api_get_models</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#server.api_get_models" title="Link to this definition"></a></dt>
+<dd><p>Fetches the list of available models and their metadata.</p>
+<p>This asynchronous function retrieves information about all available models,
+including their name, whether they use an aggregator, their associated color,
+and a formatted display name.</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>dict: A dictionary where each key is a model ID and the value is another
+dictionary.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="server.api_get_question_types">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">server.</span></span><span class="sig-name descname"><span class="pre">api_get_question_types</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#server.api_get_question_types" title="Link to this definition"></a></dt>
+<dd><p>Asynchronous function to retrieve available question types.</p>
+<p>This function returns a dictionary containing a list of question types
+derived from the keys of the <cite>QUESTION_PREFIXES</cite> dictionary, along with
+an additional “None” option.</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>dict: A dictionary with a single key “question_types”, whose value
+is a list of available question types.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="server.api_job_result">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">server.</span></span><span class="sig-name descname"><span class="pre">api_job_result</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">job_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#server.api_job_result" title="Link to this definition"></a></dt>
+<dd><p>Retrieve the result of a job by its ID.</p>
+<p>This function checks if the job is currently active and returns its status or result.
+If the job is not active, it attempts to retrieve the job’s result from the database.
+If found, the job’s data is rehydrated into the active jobs for further use.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>job_id (str): The unique identifier of the job.</p>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>dict: A dictionary containing the job’s result, including responses, analysis,</dt><dd><p>consensus score, query, question type, domain, and aggregator ID.</p>
+</dd>
+</dl>
+</dd>
+<dt>Raises:</dt><dd><p>HTTPException: If the job is not found in both active jobs and the database.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="server.api_job_status">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">server.</span></span><span class="sig-name descname"><span class="pre">api_job_status</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">job_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#server.api_job_status" title="Link to this definition"></a></dt>
+<dd><p>Retrieve the status of a specific job.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>job_id (str): The unique identifier of the job.</p>
+</dd>
+<dt>Returns:</dt><dd><p>dict: The status information of the job if it exists in active_jobs.</p>
+</dd>
+<dt>Raises:</dt><dd><p>HTTPException: If the job_id is not found in active_jobs, a 404 error is raised.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="server.api_process_query">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">server.</span></span><span class="sig-name descname"><span class="pre">api_process_query</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#server.QueryRequest" title="server.QueryRequest"><span class="pre">QueryRequest</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">background_tasks</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">fastapi.BackgroundTasks</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#server.api_process_query" title="Link to this definition"></a></dt>
+<dd><p>Handles the processing of a query request asynchronously.
+This function updates agent heartbeats, validates the API key and query,
+applies domain prefixes if specified, updates the aggregator if provided,
+and starts a background task to process the query.</p>
 <dl class="simple">
 <dt>Args:</dt><dd><dl class="simple">
-<dt>domain (str): The domain for which to fetch example choices. </dt><dd><p>If the domain is None or empty, an empty list of choices is returned.</p>
+<dt>request (QueryRequest): The query request object containing the query,</dt><dd><p>API key, domain, question type, username, and
+optional aggregator ID.</p>
+</dd>
+<dt>background_tasks (BackgroundTasks): The background tasks manager to</dt><dd><p>schedule asynchronous tasks.</p>
 </dd>
 </dl>
 </dd>
 <dt>Returns:</dt><dd><dl class="simple">
-<dt>gr.update: An object containing the updated choices and value. </dt><dd><ul class="simple">
-<li><p>If successful, the choices are populated with examples fetched from the backend.</p></li>
-<li><p>If the request fails or an error occurs, the choices are empty.</p></li>
-</ul>
+<dt>dict: A dictionary containing the job ID and the processing status.</dt><dd><p>If there are validation errors, an error message is returned.</p>
 </dd>
 </dl>
 </dd>
-<dt>Raises:</dt><dd><p>Logs errors if the backend request fails or an exception occurs during execution.</p>
+<dt>Raises:</dt><dd><p>HTTPException: If an unexpected error occurs during query processing.</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="client.init_client">
-<span class="sig-prename descclassname"><span class="pre">client.</span></span><span class="sig-name descname"><span class="pre">init_client</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">retries</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">delay</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1.5</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="_modules/client.html#init_client"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#client.init_client" title="Link to this definition"></a></dt>
-<dd><p>Initializes the client by attempting to connect to the backend and fetching necessary data.</p>
-<p>This function tries to establish a connection to the backend server and retrieve information
-such as model details, domains, question types, and examples. It retries the connection
-a specified number of times with a delay between attempts if the connection fails.</p>
+<dt class="sig sig-object py" id="server.api_reset_agent">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">server.</span></span><span class="sig-name descname"><span class="pre">api_reset_agent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#server.api_reset_agent" title="Link to this definition"></a></dt>
+<dd><p>Handles the API request to reset a specific agent by its model ID.</p>
 <dl class="simple">
-<dt>Args:</dt><dd><p>retries (int): The maximum number of connection attempts. Defaults to 3.
-delay (float): The delay (in seconds) between consecutive connection attempts. Defaults to 1.5.</p>
+<dt>Args:</dt><dd><p>model_id (str): The unique identifier of the agent to be reset.</p>
 </dd>
-<dt>Returns:</dt><dd><p>bool: True if the connection and data retrieval are successful, False otherwise.</p>
+<dt>Raises:</dt><dd><p>HTTPException: If the specified agent is not found in the system.</p>
 </dd>
-<dt>Raises:</dt><dd><p>None: All exceptions are caught and logged, and the function will return False
-if the connection fails after the specified number of retries.</p>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>dict: A dictionary containing the status and a success message indicating</dt><dd><p>that the agent has been reset.</p>
 </dd>
-<dt>Global Variables:</dt><dd><p>model_info (dict): Stores information about models retrieved from the backend.
-domains (dict): Stores domain data retrieved from the backend.
-question_types (list): Stores question types retrieved from the backend.
-examples_by_domain (dict): Stores examples categorized by domain retrieved from the backend.</p>
+</dl>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="client.main">
-<span class="sig-prename descclassname"><span class="pre">client.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/client.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#client.main" title="Link to this definition"></a></dt>
-<dd><p>The main function for the Multi-Agent LLM Client application. This function
-parses command-line arguments, updates the backend URL, creates a .env 
-template, and launches a Gradio interface.</p>
+<dt class="sig sig-object py" id="server.api_update_aggregator">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">server.</span></span><span class="sig-name descname"><span class="pre">api_update_aggregator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#server.AggregatorRequest" title="server.AggregatorRequest"><span class="pre">AggregatorRequest</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#server.api_update_aggregator" title="Link to this definition"></a></dt>
+<dd><p>Handles the API request to update an aggregator.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>request (AggregatorRequest): The request object containing the aggregator ID to be updated.</p>
+</dd>
+<dt>Returns:</dt><dd><p>dict: A dictionary containing the success status and the updated aggregator ID.</p>
+</dd>
+<dt>Raises:</dt><dd><p>HTTPException: If an error occurs during the update process, an HTTP 500 error is raised with the error details.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="client.process_query">
-<span class="sig-prename descclassname"><span class="pre">client.</span></span><span class="sig-name descname"><span class="pre">process_query</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">api_key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">question_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">domain</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aggregator_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ethical_views</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">session</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">progress=&lt;gradio.helpers.Progress</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/client.html#process_query"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#client.process_query" title="Link to this definition"></a></dt>
-<dd><p>Processes a user query by sending it to a backend service, polling for the job status, 
-and retrieving the results, including responses from models, analysis, and visualizations.</p>
+<dt class="sig sig-object py" id="server.assign_ethics_to_agents">
+<span class="sig-prename descclassname"><span class="pre">server.</span></span><span class="sig-name descname"><span class="pre">assign_ethics_to_agents</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">agent_ids</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ethical_views</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/server.html#assign_ethics_to_agents"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#server.assign_ethics_to_agents" title="Link to this definition"></a></dt>
+<dd><p>Assigns ethical perspectives to a list of agents based on the provided ethical views.</p>
 <dl class="simple">
-<dt>Args:</dt><dd><p>query (str): The user query to be processed.
-api_key (str): The API key for authentication with the backend.
-question_type (str): The type of question being asked.
+<dt>Parameters:</dt><dd><p>agent_ids (List[str]): A list of agent identifiers.
+ethical_views (List[str]): A list of ethical perspectives to assign.</p>
+</dd>
+<dt>Returns:</dt><dd><p>Dict[str, str]: A dictionary mapping each agent ID to its assigned ethical perspective.</p>
+</dd>
+<dt>Raises:</dt><dd><p>ValueError: If the number of ethical perspectives is not 1, 3, or “None”.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="server.check_agent_health">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">server.</span></span><span class="sig-name descname"><span class="pre">check_agent_health</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/server.html#check_agent_health"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#server.check_agent_health" title="Link to this definition"></a></dt>
+<dd><p>Periodically checks the health of agents and updates their status based on heartbeat activity.</p>
+<dl class="simple">
+<dt>Raises:</dt><dd><p>Any exceptions raised by <cite>update_agent_heartbeat</cite> or other asynchronous operations.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="server.format_model_name">
+<span class="sig-prename descclassname"><span class="pre">server.</span></span><span class="sig-name descname"><span class="pre">format_model_name</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_id</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/server.html#format_model_name"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#server.format_model_name" title="Link to this definition"></a></dt>
+<dd><p>Formats the model name based on its configuration.
+This function retrieves the model configuration using the provided <cite>model_id</cite>
+from the <cite>MODELS</cite> dictionary. It extracts the model name from the path, removes
+unnecessary formatting (e.g., version numbers and suffixes like “-instruct”),
+capitalizes each word, and appends an “Aggregator” tag if applicable.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>model_id (str): The identifier for the model in the <cite>MODELS</cite> dictionary.</p>
+</dd>
+<dt>Returns:</dt><dd><p>str: A human-readable, formatted model name.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="server.lifespan">
+<span class="sig-prename descclassname"><span class="pre">server.</span></span><span class="sig-name descname"><span class="pre">lifespan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">app</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">fastapi.FastAPI</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/server.html#lifespan"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#server.lifespan" title="Link to this definition"></a></dt>
+<dd><p>Handles the lifespan events of the FastAPI application.
+This function is a generator that manages the startup and shutdown
+events of the application. During startup, it initializes a background
+task to periodically check the health of agents. The background task
+runs indefinitely at a specified interval.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>app (FastAPI): The FastAPI application instance.</p>
+</dd>
+<dt>Yields:</dt><dd><p>None: Control is passed to the application after startup tasks are initialized.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="server.process_query_background">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">server.</span></span><span class="sig-name descname"><span class="pre">process_query_background</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">job_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">question_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ethical_views</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">username</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/server.html#process_query_background"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#server.process_query_background" title="Link to this definition"></a></dt>
+<dd><p>Processes a query asynchronously in the background, updating job status and progress,
+interacting with agents, aggregating responses, and saving results to the database.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>job_id (str): A unique identifier for the job being processed.
+query (str): The query string to be processed.
+question_type (str): The type of question being asked (e.g., factual, analytical).
 domain (str): The domain or context of the query.
-aggregator_id (str): The ID of the aggregator model to be used.
-session (str): The session or username for tracking the request.
-progress (gr.Progress, optional): A progress tracker for updating the UI.</p>
+ethical_views (List[str]): A list of ethical perspectives.
+username (str): The username of the user submitting the query.</p>
 </dd>
-<dt>Returns:</dt><dd><dl class="simple">
-<dt>list: Contains:</dt><dd><ul class="simple">
-<li><p>str: Aggregator model response or error message.</p></li>
-<li><p>str: Responses from up to three non-aggregator models.</p></li>
-<li><p>float: Consensus score.</p></li>
-<li><p>Image or None: Visualizations (heatmap, emotion, polarity, radar).</p></li>
-<li><p>gr.update: Updates for warnings and model labels.</p></li>
-</ul>
-</dd>
-</dl>
-</dd>
-<dt>Raises:</dt><dd><p>Exception: For errors during query processing, including network or backend issues.</p>
+<dt>Raises:</dt><dd><p>Exception: Captures and logs any errors that occur during processing.</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="client.update_aggregator">
-<span class="sig-prename descclassname"><span class="pre">client.</span></span><span class="sig-name descname"><span class="pre">update_aggregator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">aggregator_id</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/client.html#update_aggregator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#client.update_aggregator" title="Link to this definition"></a></dt>
-<dd><p>Updates the aggregator model on the backend server.</p>
-<p>This function sends a POST request to the backend server to update the 
-aggregator model identified by the given <cite>aggregator_id</cite>. If the request 
-is successful, the updated aggregator ID is returned. Otherwise, an error 
-is logged, and <cite>None</cite> is returned.</p>
+<dt class="sig sig-object py" id="server.reset_failed_agent">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">server.</span></span><span class="sig-name descname"><span class="pre">reset_failed_agent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_id</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/server.html#reset_failed_agent"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#server.reset_failed_agent" title="Link to this definition"></a></dt>
+<dd><p>Reset the status of a failed agent to “healthy” and clear its failure and retry counts.</p>
 <dl class="simple">
-<dt>Args:</dt><dd><p>aggregator_id (str): The unique identifier of the aggregator to update.</p>
-</dd>
-<dt>Returns:</dt><dd><p>str or None: The updated aggregator ID if the request is successful, 
-or <cite>None</cite> if the request fails or an exception occurs.</p>
-</dd>
-<dt>Raises:</dt><dd><p>None: Any exceptions are caught and logged.</p>
+<dt>Args:</dt><dd><p>model_id (str): The unique identifier of the agent to reset.</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="client.update_output_labels">
-<span class="sig-prename descclassname"><span class="pre">client.</span></span><span class="sig-name descname"><span class="pre">update_output_labels</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">aggregator_id</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/client.html#update_output_labels"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#client.update_output_labels" title="Link to this definition"></a></dt>
-<dd><p>Updates the output labels for the aggregator and agent models based on the 
-provided aggregator ID and the model information retrieved from the backend.</p>
+<dt class="sig sig-object py" id="server.root">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">server.</span></span><span class="sig-name descname"><span class="pre">root</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#server.root" title="Link to this definition"></a></dt>
+<dd><p>Handles the root endpoint of the server.</p>
+<p>This asynchronous function returns a JSON response indicating that the 
+Multi-Agent LLM Backend is operational.</p>
 <dl class="simple">
-<dt>Args:</dt><dd><p>aggregator_id (str): The ID of the aggregator whose labels need to be updated.</p>
-</dd>
-<dt>Returns:</dt><dd><dl class="simple">
-<dt>dict: A dictionary containing updated labels for the aggregator and up to </dt><dd><p>three agent models. The keys correspond to the output components 
-(e.g., <cite>output_aggregator</cite>, <cite>output_model1</cite>, <cite>output_model2</cite>, <cite>output_model3</cite>), 
-and the values are <cite>gr.update</cite> objects with the new labels.</p>
-</dd>
-</dl>
+<dt>Returns:</dt><dd><p>dict: A dictionary containing a message confirming the server’s status.</p>
 </dd>
 </dl>
 </dd></dl>
 
+<dl class="py function">
+<dt class="sig sig-object py" id="server.update_agent_heartbeat">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">server.</span></span><span class="sig-name descname"><span class="pre">update_agent_heartbeat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_id</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/server.html#update_agent_heartbeat"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#server.update_agent_heartbeat" title="Link to this definition"></a></dt>
+<dd><p>Update the last heartbeat time and status for a specific agent.</p>
+<p>This function updates the <cite>last_heartbeat</cite> timestamp, sets the agent’s 
+status to “healthy”, and marks the agent as having processed a request 
+in the <cite>agent_health</cite> dictionary.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>model_id (str): The unique identifier of the agent whose heartbeat </dt><dd><p>information is being updated.</p>
+</dd>
+</dl>
+</dd>
+<dt>Raises:</dt><dd><p>KeyError: If the provided <cite>model_id</cite> is not found in the <cite>agent_health</cite> dictionary.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="server.update_aggregator">
+<span class="sig-prename descclassname"><span class="pre">server.</span></span><span class="sig-name descname"><span class="pre">update_aggregator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">new_aggregator_id</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/server.html#update_aggregator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#server.update_aggregator" title="Link to this definition"></a></dt>
+<dd><p>Update the aggregator status in the MODELS dictionary.
+This function resets the ‘aggregator’ status for all models in the MODELS 
+dictionary and sets the ‘aggregator’ status to True for the model with the 
+specified <cite>new_aggregator_id</cite>.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>new_aggregator_id (str): The ID of the model to be set as the new aggregator.</p>
+</dd>
+<dt>Returns:</dt><dd><p>str: The ID of the model that was set as the new aggregator.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="client-module">
+<h2>client module<a class="headerlink" href="#client-module" title="Link to this heading"></a></h2>
 </section>
 <section id="module-database_manager">
 <span id="database-manager-module"></span><h2>database_manager module<a class="headerlink" href="#module-database_manager" title="Link to this heading"></a></h2>
@@ -487,7 +1035,7 @@ password (str): The plaintext password of the user to verify.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="load_balancer.proxy">
-<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">load_balancer.</span></span><span class="sig-name descname"><span class="pre">proxy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Request</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/load_balancer.html#proxy"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#load_balancer.proxy" title="Link to this definition"></a></dt>
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">load_balancer.</span></span><span class="sig-name descname"><span class="pre">proxy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">fastapi.Request</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#load_balancer.proxy" title="Link to this definition"></a></dt>
 <dd><p>Smart proxy:
 - Sticky routing for job_id-specific paths (status/result/image)
 - Round-robin with retry logic for everything else (2-fault tolerant)</p>

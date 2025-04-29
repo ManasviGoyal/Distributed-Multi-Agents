@@ -88,8 +88,6 @@
     <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">hashlib</span><span class="o">.</span><span class="n">md5</span><span class="p">(</span><span class="n">job_id</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">(),</span> <span class="mi">16</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="proxy">
-<a class="viewcode-back" href="../modules.html#load_balancer.proxy">[docs]</a>
 <span class="nd">@app</span><span class="o">.</span><span class="n">api_route</span><span class="p">(</span><span class="s2">&quot;/{path:path}&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;POST&quot;</span><span class="p">,</span> <span class="s2">&quot;PUT&quot;</span><span class="p">,</span> <span class="s2">&quot;DELETE&quot;</span><span class="p">])</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">proxy</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
@@ -136,8 +134,7 @@
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠️ Backend </span><span class="si">{</span><span class="n">backend</span><span class="si">}</span><span class="s2"> failed with error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">continue</span>  <span class="c1"># try next backend</span>
 
-    <span class="k">return</span> <span class="n">Response</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="s2">&quot;❌ All backends failed.&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">503</span><span class="p">)</span></div>
-
+    <span class="k">return</span> <span class="n">Response</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="s2">&quot;❌ All backends failed.&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">503</span><span class="p">)</span>
 </pre></div>
 
            </div>
