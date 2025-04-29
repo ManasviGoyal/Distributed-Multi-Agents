@@ -19,6 +19,7 @@ release = '0.1'
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 autodoc_mock_imports = [
+    "gradio",
     "sentence_transformers",
     "transformers",
     "huggingface_hub",
