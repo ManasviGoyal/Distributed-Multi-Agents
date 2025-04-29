@@ -18,6 +18,22 @@ release = '0.1'
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
+autodoc_mock_imports = [
+    "sentence_transformers",
+    "transformers",
+    "huggingface_hub",
+    "dotenv",
+    "fastapi",
+    "starlette",
+    "scipy",
+    "nltk",
+    "seaborn",
+    "PIL",
+    "matplotlib",
+    "requests",
+    "uvicorn",
+]
+
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.viewcode',
