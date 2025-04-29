@@ -1212,7 +1212,17 @@ password (str): The plaintext password of the user to verify.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="load_balancer.consistent_hash">
 <span class="sig-prename descclassname"><span class="pre">load_balancer.</span></span><span class="sig-name descname"><span class="pre">consistent_hash</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">job_id</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/load_balancer.html#consistent_hash"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#load_balancer.consistent_hash" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Generates a consistent hash value for a given job ID.</p>
+<p>This function uses the MD5 hashing algorithm to compute a hash
+for the provided job ID string. The resulting hash is then
+converted to an integer in base 16.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>job_id (str): The unique identifier for the job to be hashed.</p>
+</dd>
+<dt>Returns:</dt><dd><p>int: A consistent integer hash value derived from the job ID.</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="load_balancer.proxy">

@@ -78,13 +78,26 @@
 <span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">()</span>
 
 <span class="c1"># Define backend servers</span>
-<span class="n">BACKENDS</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;http://172.31.34.248:8001&quot;</span><span class="p">,</span> <span class="s2">&quot;http://172.31.34.248:8002&quot;</span><span class="p">,</span> <span class="s2">&quot;http://172.31.34.248:8003&quot;</span><span class="p">]</span>
+<span class="n">BACKENDS</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;http://10.250.201.148:8001&quot;</span><span class="p">,</span> <span class="s2">&quot;http://10.250.201.148:8002&quot;</span><span class="p">,</span> <span class="s2">&quot;http://10.250.150.216:8003&quot;</span><span class="p">]</span>
 <span class="n">backend_cycle</span> <span class="o">=</span> <span class="n">itertools</span><span class="o">.</span><span class="n">cycle</span><span class="p">(</span><span class="n">BACKENDS</span><span class="p">)</span>
 <span class="n">MAX_RETRIES</span> <span class="o">=</span> <span class="mi">3</span>
 
 <div class="viewcode-block" id="consistent_hash">
 <a class="viewcode-back" href="../modules.html#load_balancer.consistent_hash">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">consistent_hash</span><span class="p">(</span><span class="n">job_id</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generates a consistent hash value for a given job ID.</span>
+
+<span class="sd">    This function uses the MD5 hashing algorithm to compute a hash</span>
+<span class="sd">    for the provided job ID string. The resulting hash is then</span>
+<span class="sd">    converted to an integer in base 16.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        job_id (str): The unique identifier for the job to be hashed.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        int: A consistent integer hash value derived from the job ID.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">hashlib</span><span class="o">.</span><span class="n">md5</span><span class="p">(</span><span class="n">job_id</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">(),</span> <span class="mi">16</span><span class="p">)</span></div>
 
 
@@ -124,6 +137,8 @@
                 <span class="p">)</span>
 
                 <span class="n">content_type</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;content-type&quot;</span><span class="p">,</span> <span class="s2">&quot;application/octet-stream&quot;</span><span class="p">)</span>
+                
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">backend</span><span class="si">}</span><span class="s2"> joined successfully for &#39;</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
                 <span class="k">return</span> <span class="n">Response</span><span class="p">(</span>
                     <span class="n">content</span><span class="o">=</span><span class="n">resp</span><span class="o">.</span><span class="n">content</span><span class="p">,</span>
                     <span class="n">status_code</span><span class="o">=</span><span class="n">resp</span><span class="o">.</span><span class="n">status_code</span><span class="p">,</span>
@@ -134,6 +149,7 @@
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠️ Backend </span><span class="si">{</span><span class="n">backend</span><span class="si">}</span><span class="s2"> failed with error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">continue</span>  <span class="c1"># try next backend</span>
 
+    
     <span class="k">return</span> <span class="n">Response</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="s2">&quot;❌ All backends failed.&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">503</span><span class="p">)</span>
 </pre></div>
 
