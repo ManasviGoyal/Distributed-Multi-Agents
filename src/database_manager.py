@@ -13,6 +13,7 @@ class DatabaseManager:
     DatabaseManager is a class responsible for managing interactions with an SQLite database.
     It provides methods to initialize the database, store and retrieve data related to user interactions,
     responses, and analysis, as well as manage user accounts.
+    
     Attributes:
         db_path (str): The file path to the SQLite database.
     """
@@ -36,19 +37,12 @@ class DatabaseManager:
     def initialize_db(self):
         """
         Initializes the database by creating necessary tables if they do not already exist.
-        This method connects to the SQLite database specified by `self.db_path` and creates
-        the following tables:
-        1. `interactions`: Stores information about user interactions, including job ID, query,
-           domain, question type, timestamp, and username.
-        2. `responses`: Stores agent responses to user queries, including job ID, agent ID,
-           response text, whether the response is from an aggregator, and timestamp. It has
-           a foreign key relationship with the `interactions` table.
-        3. `analysis`: Stores analysis data for jobs, including consensus score, analysis data,
-           and timestamp. It has a foreign key relationship with the `interactions` table.
-        4. `users`: Stores user credentials, including a unique username and password.
-
-        Raises:
-            Exception: If there is an error during database initialization.
+        Tables created:
+        - interactions: Stores interaction details such as job ID, query, domain, question type, timestamp, username, and roles.
+        - responses: Stores agent responses linked to interactions, including job ID, agent ID, response text, aggregator status, and timestamp.
+        - analysis: Stores analysis data for interactions, including consensus score, analysis data, and timestamp.
+        - users: Stores user credentials with unique usernames and passwords.
+        Logs a success message upon successful initialization or an error message if an exception occurs.
         """
         try:
             conn = sqlite3.connect(self.db_path)
@@ -109,9 +103,11 @@ class DatabaseManager:
     def get_user_history(self, username: str, limit: int = 50) -> List[Dict[str, Any]]:
         """
         Retrieves the interaction history of a specific user from the database.
+        
         Args:
             username (str): The username of the user whose history is to be retrieved.
             limit (int, optional): The maximum number of interactions to retrieve. Defaults to 50.
+        
         Returns:
             List[Dict[str, Any]]: A list of dictionaries, where each dictionary represents an interaction.
         """
@@ -151,6 +147,7 @@ class DatabaseManager:
     def save_interaction(self, job_id: str, query: str, domain: str, question_type: str, username: str, roles: Optional[str] = "") -> bool:
         """
         Saves an interaction record to the database.
+        
         Args:
             job_id (str): The unique identifier for the job associated with the interaction.
             query (str): The query or input provided by the user.
@@ -158,8 +155,10 @@ class DatabaseManager:
             question_type (str): The type of question being asked.
             username (str): The username of the individual initiating the interaction.
             roles (Optional[str]): Additional roles or metadata associated with the interaction. Defaults to an empty string.
+        
         Returns:
             bool: True if the interaction was successfully saved, False otherwise.
+        
         Raises:
             Logs an error message if an exception occurs during the database operation.
         """
@@ -184,12 +183,15 @@ class DatabaseManager:
     def save_responses(self, job_id: str, responses: Dict[str, str], aggregator_id: Optional[str] = None) -> bool:
         """
         Saves agent responses to the database for a specific job.
+        
         Args:
             job_id (str): The unique identifier for the job.
             responses (Dict[str, str]): A dictionary mapping agent IDs to their responses.
             aggregator_id (Optional[str]): The ID of the aggregator agent, if any. Defaults to None.
+        
         Returns:
             bool: True if the responses were successfully saved, False otherwise.
+        
         Raises:
             Exception: Logs an error message if an exception occurs during the database operation.
         """
@@ -216,12 +218,15 @@ class DatabaseManager:
     def save_analysis(self, job_id: str, consensus_score: float, analysis_data: Dict[str, Any]) -> bool:
         """
         Saves the analysis data for a specific job into the database.
+        
         Args:
             job_id (str): The unique identifier for the job.
             consensus_score (float): The consensus score associated with the analysis.
             analysis_data (Dict[str, Any]): A dictionary containing the analysis data to be saved.
+        
         Returns:
             bool: True if the analysis data was successfully saved, False otherwise.
+        
         Raises:
             Exception: Logs any exception that occurs during the database operation.
         """
@@ -249,8 +254,10 @@ class DatabaseManager:
     def get_interaction_history(self, limit: int = 50) -> List[Dict[str, Any]]:
         """
         Retrieves the interaction history from the database, including associated responses.
+        
         Args:
             limit (int): The maximum number of interactions to retrieve. Defaults to 50.
+        
         Returns:
             List[Dict[str, Any]]: A list of dictionaries, where each dictionary represents an interaction.
         """
@@ -295,11 +302,14 @@ class DatabaseManager:
     def get_interaction(self, job_id: str) -> Optional[Dict[str, Any]]:
         """
         Retrieves interaction details from the database for a given job ID.
+        
         Args:
             job_id (str): The unique identifier for the job whose interaction details are to be retrieved.
+        
         Returns:
             Optional[Dict[str, Any]]: A dictionary containing the interaction details if found, or None if no interaction
             exists for the given job ID.
+        
         Raises:
             Logs an error and returns None if an exception occurs during database operations.
         """
@@ -360,12 +370,15 @@ class DatabaseManager:
         This method removes entries from the `responses`, `analysis`, and `interactions`
         tables in the database for a given job ID, provided the specified username
         matches the owner of the interaction.
+        
         Args:
             job_id (str): The unique identifier of the job to be deleted.
             username (str): The username of the user attempting to delete the interaction.
+        
         Returns:
             bool: True if the interaction and associated data were successfully deleted,
                   False if the username does not match the owner or an error occurs.
+        
         Raises:
             None: Any exceptions encountered are logged and handled internally.
         """

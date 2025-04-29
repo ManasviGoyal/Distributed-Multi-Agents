@@ -42,7 +42,7 @@ from starlette.responses import StreamingResponse
 import uvicorn
 
 # Local Imports
-from src.database_manager import DatabaseManager  # works when run from root     # works when run from inside src/
+from database_manager import DatabaseManager  # works when run from root     # works when run from inside src/
 
 # Download nltk data
 try:
@@ -173,9 +173,6 @@ def assign_ethics_to_agents(agent_ids: List[str], ethical_views: List[str]) -> D
     Parameters:
         agent_ids (List[str]): A list of agent identifiers.
         ethical_views (List[str]): A list of ethical perspectives to assign. 
-            - If empty or contains "None", no ethical perspective is assigned, and agents are mapped to an empty string.
-            - If it contains exactly one perspective, all agents are assigned that perspective.
-            - If it contains exactly three perspectives, a random selection of perspectives is assigned to the agents.
 
     Returns:
         Dict[str, str]: A dictionary mapping each agent ID to its assigned ethical perspective.
@@ -213,8 +210,10 @@ async def lifespan(app: FastAPI):
     events of the application. During startup, it initializes a background
     task to periodically check the health of agents. The background task
     runs indefinitely at a specified interval.
+    
     Args:
         app (FastAPI): The FastAPI application instance.
+    
     Yields:
         None: Control is passed to the application after startup tasks are initialized.
     """
@@ -307,6 +306,7 @@ class OpenRouterClient:
     """
     OpenRouterClient is a class designed to interact with the OpenRouter API for generating responses,
     analyzing text embeddings, and performing sentiment and emotional tone analysis.
+    
     Attributes:
         api_key (str): The API key used for authenticating with the OpenRouter API.
         site_url (str, optional): The URL of the site making the request, used for HTTP-Referer header.
@@ -314,6 +314,7 @@ class OpenRouterClient:
         url (str): The endpoint URL for the OpenRouter API.
         sentence_encoder (SentenceTransformer): A pre-trained model for generating text embeddings.
         sentiment_analyzer (SentimentIntensityAnalyzer): A VADER sentiment analyzer for sentiment analysis.
+    
     Methods:
         generate_response(model_name: str, prompt: str, temperature: float = 0.7) -> str:
             Asynchronously generates a response from a specified model via the OpenRouter API.
@@ -354,13 +355,15 @@ class OpenRouterClient:
     async def generate_response(self, model_name: str, prompt: str, temperature: float = 0.7) -> str:
         """
         Asynchronously generates a response from a specified model based on the given prompt.
+    
         Args:
             model_name (str): The name of the model to use for generating the response.
             prompt (str): The input prompt to send to the model.
             temperature (float, optional): The sampling temperature for the model's response. 
-                Defaults to 0.7.
+    
         Returns:
             str: The generated response from the model, or an error message if the operation fails.
+    
         Raises:
             asyncio.TimeoutError: If the API request times out.
             Exception: For any other unexpected errors during the process.
@@ -547,8 +550,10 @@ class OpenRouterClient:
         This method combines sentiment analysis from VADER and TextBlob to calculate
         an average polarity and subjectivity score. It also evaluates emotional tones
         and determines a contextual tone based on the polarity.
+        
         Args:
             text (str): The input text to analyze.
+        
         Returns:
             Dict[str, Any]: A dictionary containing the following keys:
                 - 'polarity' (float): The average polarity score from VADER and TextBlob.
@@ -590,6 +595,7 @@ class ResponseAggregator:
     This class is responsible for processing queries through multiple AI models, aggregating their responses, 
     and generating a consensus summary. It also provides analysis of the responses, including sentiment, 
     similarity, and visualization of key metrics.
+    
     Attributes:
         client (Any): The client used to interact with AI models for generating responses.
     """
@@ -612,18 +618,14 @@ class ResponseAggregator:
         4. Identifies an aggregator model to summarize the responses, with failover to backup models if necessary.
         5. Generates a consensus summary using the aggregator model.
         6. Analyzes the responses and returns the results.
+    
         Args:
             query (str): The input query to process.
             question_type (str, optional): The type of question, used to apply a prefix to the query. Defaults to "none".
-        ethical_views (List[str], optional): A list of atmost 3 ethical perspectives or ["None"] to skip role assignments.
+            ethical_views (List[str], optional): A list of atmost 3 ethical perspectives or ["None"] to skip role assignments.
+    
         Returns:
-            Dict[str, Any]: A dictionary containing the following keys:
-                - "query" (str): The original query.
-                - "formatted_query" (str): The query after applying the question type prefix.
-                - "responses" (Dict[str, Any]): The responses from the agent models.
-                - "analysis" (Any): Analysis of the responses.
-                - "consensus_summary" (str): The aggregated consensus summary.
-                - "aggregator_id" (str): The ID of the aggregator model used.
+            Dict[str, Any]: A dictionary containing the some keys.
         """
         model_responses = {}
         
@@ -804,10 +806,12 @@ class ResponseAggregator:
     async def generate_consensus_summary(self, query: str, responses: Dict[str, str], aggregator_id: str) -> str:
         """
         Generate a summarized consensus from all model responses using the aggregator model.
+    
         Args:
             query (str): The query or prompt that was provided to the models.
             responses (Dict[str, str]): A dictionary mapping model IDs to their respective responses.
             aggregator_id (str): The ID of the designated aggregator model.
+    
         Returns:
             str: A comprehensive consensus summary generated by the aggregator model. If all models fail 
                  or encounter errors, a fallback message is returned indicating the inability to generate a summary.
@@ -866,32 +870,18 @@ class ResponseAggregator:
     
     async def analyze_responses(self, query: str, responses: Dict[str, str]) -> Dict[str, Any]:
         """
-        Analyze the responses from different models and generate insights.
-
-        This method processes the responses from various models, performs sentiment analysis,
+        Analyze the responses from different models and generate insights. This method 
+        processes the responses from various models, performs sentiment analysis,
         calculates similarity metrics, and generates visualizations to provide insights into
         the responses. If there are fewer than two valid responses, it skips the visual analysis
         and returns basic metrics with a warning.
 
         Args:
             query (str): The input query for which the responses were generated.
-            responses (Dict[str, str]): A dictionary where keys are model IDs and values are
-                the corresponding responses from the models.
+            responses (Dict[str, str]): A dictionary model IDs as keys and responses as values.
 
         Returns:
-            Dict[str, Any]: A dictionary containing the following keys:
-                - "similarity_matrix" (Optional[Dict[str, Dict[str, float]]]): Pairwise similarity
-                  scores between model responses.
-                - "response_lengths" (Dict[str, int]): Word counts of the valid responses.
-                - "avg_response_length" (Optional[float]): Average word count of the valid responses.
-                - "sentiment_analysis" (Dict[str, Any]): Sentiment analysis results for each response.
-                - "consensus_score" (float): Average pairwise similarity score between responses.
-                - "heatmap" (Optional[str]): Base64-encoded heatmap image of the similarity matrix.
-                - "emotion_chart" (Optional[str]): Base64-encoded emotion chart image.
-                - "polarity_chart" (Optional[str]): Base64-encoded polarity chart image.
-                - "radar_chart" (Optional[str]): Base64-encoded radar chart image.
-                - "warning" (Optional[str]): Warning message if visual analysis is skipped.
-                - "error" (Optional[str]): Error message if the analysis fails.
+            Dict[str, Any]: A dictionary containing the some keys.
 
         Raises:
             Exception: If an error occurs during the analysis process.
@@ -1004,9 +994,11 @@ class ResponseAggregator:
         This method creates a heatmap using seaborn, with annotations and a color map
         ranging from yellow to blue. The heatmap is saved to an in-memory buffer as a PNG
         image and returned as a PIL Image object.
+    
         Args:
             df (pd.DataFrame): The input DataFrame containing the data to be visualized
                 in the heatmap. The values should be normalized between 0 and 1.
+    
         Returns:
             Image.Image: A PIL Image object containing the generated heatmap.
         """
@@ -1025,13 +1017,13 @@ class ResponseAggregator:
     def _generate_emotion_chart(self, sentiment_analysis: Dict[str, Dict]) -> Image.Image:
         """
         Generates a stacked bar chart visualizing emotional tone analysis for different models.
+    
         Args:
             sentiment_analysis (Dict[str, Dict]): A dictionary where keys are model names and values 
                 are dictionaries containing emotional tone data under the key 'emotional_tones'.
+    
         Returns:
             Image.Image: A PIL Image object containing the generated chart.
-        The chart displays the proportion of different emotional tones for each model as a stacked bar chart.
-        Emotional tones with proportions greater than 5% are labeled with their percentage values.
         """
         # Extract emotion data
         emotions_data = {}
@@ -1074,10 +1066,12 @@ class ResponseAggregator:
     def _generate_polarity_chart(self, sentiment_analysis: Dict[str, Dict]) -> Image.Image:
         """
         Generates a bar chart visualizing sentiment polarity scores for different models.
+
         Args:
             sentiment_analysis (Dict[str, Dict]): A dictionary where keys are model names and 
                 values are dictionaries containing sentiment analysis results, including a 
                 'compound' key representing the polarity score (-1 to +1).
+
         Returns:
             Image.Image: A PIL Image object containing the generated bar chart.
         """
@@ -1121,6 +1115,7 @@ class ResponseAggregator:
                              lengths: Dict[str, int]) -> Image.Image:
         """
         Generate a radar/spider chart comparing response features with consistent colors.
+
         Args:
             responses (Dict[str, str]): A dictionary where keys are model names and values are their responses.
             sentiment_analysis (Dict[str, Dict]): A dictionary containing sentiment analysis results for each model.
@@ -1130,6 +1125,7 @@ class ResponseAggregator:
                 - 'emotional_tones': A dictionary with keys 'Analytical', 'Empathetic', and 'Curious', 
                    representing emotional tone scores (float, range [0, 1]).
             lengths (Dict[str, int]): A dictionary where keys are model names and values are the lengths of their responses.
+
         Returns:
             Image.Image: A PIL Image object containing the radar chart visualization.
         """
@@ -1211,8 +1207,10 @@ def update_aggregator(new_aggregator_id):
     This function resets the 'aggregator' status for all models in the MODELS 
     dictionary and sets the 'aggregator' status to True for the model with the 
     specified `new_aggregator_id`.
+
     Args:
         new_aggregator_id (str): The ID of the model to be set as the new aggregator.
+
     Returns:
         str: The ID of the model that was set as the new aggregator.
     """
@@ -1269,11 +1267,6 @@ async def update_agent_heartbeat(model_id):
 async def check_agent_health():
     """
     Periodically checks the health of agents and updates their status based on heartbeat activity.
-    This function performs the following tasks:
-    1. Refreshes the heartbeat of all agents if any job is currently active or processing.
-    2. Checks the time elapsed since the last heartbeat for each agent and marks the agent as 
-       "unhealthy" if the elapsed time exceeds twice the defined health timeout.
-    Logs a warning if an agent is marked as "unhealthy" due to lack of heartbeat activity.
 
     Raises:
         Any exceptions raised by `update_agent_heartbeat` or other asynchronous operations.
@@ -1433,15 +1426,18 @@ async def api_process_query(request: QueryRequest, background_tasks: BackgroundT
     This function updates agent heartbeats, validates the API key and query,
     applies domain prefixes if specified, updates the aggregator if provided,
     and starts a background task to process the query.
+
     Args:
         request (QueryRequest): The query request object containing the query,
                                 API key, domain, question type, username, and
                                 optional aggregator ID.
         background_tasks (BackgroundTasks): The background tasks manager to
                                              schedule asynchronous tasks.
+
     Returns:
         dict: A dictionary containing the job ID and the processing status.
               If there are validation errors, an error message is returned.
+
     Raises:
         HTTPException: If an unexpected error occurs during query processing.
     """
@@ -1497,10 +1493,13 @@ async def api_process_query(request: QueryRequest, background_tasks: BackgroundT
 async def api_job_status(job_id: str):
     """
     Retrieve the status of a specific job.
+
     Args:
         job_id (str): The unique identifier of the job.
+
     Returns:
         dict: The status information of the job if it exists in active_jobs.
+
     Raises:
         HTTPException: If the job_id is not found in active_jobs, a 404 error is raised.
     """
@@ -1565,16 +1564,14 @@ async def api_job_result(job_id: str):
 async def api_get_image(job_id: str, image_type: str):
     """
     Retrieve a specific type of image associated with a completed job.
+    
     Args:
         job_id (str): The unique identifier of the job.
-        image_type (str): The type of image to retrieve. 
-                          Valid options are "heatmap", "emotion_chart", 
-                          "polarity_chart", and "radar_chart".
+        image_type (str): The type of image to retrieve.
+    
     Raises:
-        HTTPException: 
-            - 404: If the job ID is not found or the requested image is not available.
-            - 400: If the job is not completed, no analysis is available, 
-                   or the image type is invalid.
+        HTTPException: error codes
+
     Returns:
         StreamingResponse: A streaming response containing the requested image 
                            in PNG format.
@@ -1610,6 +1607,7 @@ async def process_query_background(job_id: str, query: str, question_type: str, 
     """
     Processes a query asynchronously in the background, updating job status and progress,
     interacting with agents, aggregating responses, and saving results to the database.
+    
     Args:
         job_id (str): A unique identifier for the job being processed.
         query (str): The query string to be processed.
@@ -1617,6 +1615,7 @@ async def process_query_background(job_id: str, query: str, question_type: str, 
         domain (str): The domain or context of the query.
         ethical_views (List[str]): A list of ethical perspectives.
         username (str): The username of the user submitting the query.
+    
     Raises:
         Exception: Captures and logs any errors that occur during processing.
     """
@@ -1741,11 +1740,7 @@ async def api_get_models():
 
     Returns:
         dict: A dictionary where each key is a model ID and the value is another
-        dictionary containing the following keys:
-            - "name" (str): The name of the model.
-            - "aggregator" (bool): Indicates if the model uses an aggregator.
-            - "color" (str): The color associated with the model (default is "#95a5a6").
-            - "display_name" (str): A formatted display name for the model.
+        dictionary.
     """
     model_info = {}
     for model_id, config in MODELS.items():
@@ -1764,8 +1759,10 @@ def format_model_name(model_id):
     from the `MODELS` dictionary. It extracts the model name from the path, removes
     unnecessary formatting (e.g., version numbers and suffixes like "-instruct"),
     capitalizes each word, and appends an "Aggregator" tag if applicable.
+    
     Args:
         model_id (str): The identifier for the model in the `MODELS` dictionary.
+    
     Returns:
         str: A human-readable, formatted model name.
     """
@@ -1827,16 +1824,10 @@ async def api_agent_health():
     It then processes the `agent_health` dictionary to create a formatted response
     containing the health status of each agent, including the time since the last
     heartbeat, the number of failures, and retries.
+    
     Returns:
         dict: A dictionary where each key is a model ID and the value is another
-        dictionary containing:
-            - status (str): The current health status of the agent.
-            - last_heartbeat (str): The timestamp of the last heartbeat in the format
-              "YYYY-MM-DD HH:MM:SS".
-            - seconds_since_heartbeat (float): The number of seconds since the last
-              heartbeat.
-            - failures (int): The number of failures recorded for the agent.
-            - retries (int): The number of retries attempted for the agent.
+        dictionary.
     """
     await check_agent_health()
     
@@ -1861,10 +1852,13 @@ async def api_agent_health():
 async def api_reset_agent(model_id: str):
     """
     Handles the API request to reset a specific agent by its model ID.
+    
     Args:
         model_id (str): The unique identifier of the agent to be reset.
+    
     Raises:
         HTTPException: If the specified agent is not found in the system.
+    
     Returns:
         dict: A dictionary containing the status and a success message indicating
               that the agent has been reset.

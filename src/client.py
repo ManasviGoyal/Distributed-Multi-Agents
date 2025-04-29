@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from PIL import Image
 from io import BytesIO
 
-from src.database_manager import DatabaseManager  # works when run from root     # works when run from inside src/
+from database_manager import DatabaseManager  # works when run from root     # works when run from inside src/
 
 # Load environment variables
 load_dotenv()
@@ -54,7 +54,6 @@ def init_client(retries: int = 3, delay: float = 1.5) -> bool:
         domains (dict): Stores domain data retrieved from the backend.
         question_types (list): Stores question types retrieved from the backend.
         examples_by_domain (dict): Stores examples categorized by domain retrieved from the backend.
-
     """
     global model_info, domains, question_types, examples_by_domain
     attempt = 0
@@ -126,13 +125,16 @@ def update_aggregator(aggregator_id):
 def get_example_choices(domain):
     """
     Fetches example choices for a given domain from a backend service.
+    
     Args:
         domain (str): The domain for which to fetch example choices. 
                       If the domain is None or empty, an empty list of choices is returned.
+    
     Returns:
         gr.update: An object containing the updated choices and value. 
                    - If successful, the choices are populated with examples fetched from the backend.
                    - If the request fails or an error occurs, the choices are empty.
+    
     Raises:
         Logs errors if the backend request fails or an exception occurs during execution.
     """
@@ -697,8 +699,10 @@ def create_gradio_interface():
                 def refresh_history(session_user):
                     """
                     Fetches and processes the history of user queries from the backend.
+                    
                     Args:
                         session_user (str): The username of the session user whose history is to be fetched.
+                    
                     Returns:
                         tuple: A tuple containing:
                             - rows (list): A list of lists where each inner list represents a row with the following details:
@@ -795,9 +799,11 @@ def create_gradio_interface():
                 def load_selected_row(row_idx, job_ids):
                     """
                     Loads the details of a selected job row based on the provided row index and job IDs.
+                    
                     Args:
                         row_idx (int): The index of the selected row in the job list.
                         job_ids (list): A list of job IDs corresponding to the rows.
+                    
                     Returns:
                         list: A list of 14 elements containing the following:
                             - gr.update(value=query): The query string associated with the job.
@@ -814,6 +820,7 @@ def create_gradio_interface():
                             - Image or None: The polarity chart image fetched from the backend.
                             - Image or None: The radar chart image fetched from the backend.
                             - str: The aggregator ID.
+                    
                     Raises:
                         Exception: Logs any unexpected errors encountered during the process.
                     """
@@ -906,15 +913,18 @@ def create_gradio_interface():
                 def delete_selected_row(row_idx, job_ids, session_user):
                     """
                     Deletes a selected row from the job history based on the provided row index.
+                    
                     Args:
                         row_idx (int): The index of the row to delete. Must be within the range of `job_ids`.
                         job_ids (list): A list of job IDs corresponding to the rows in the job history.
                         session_user (str): The username of the current session user.
+                    
                     Returns:
                         tuple: A tuple containing:
                             - Updated rows (or `gr.update()` if no update is performed).
                             - Updated job IDs (or `gr.update()` if no update is performed).
                             - A message string indicating the result of the operation.
+                    
                     Raises:
                         None: Any exceptions encountered during the operation are caught and logged.
                     """
@@ -1406,11 +1416,6 @@ def main():
     The main function for the Multi-Agent LLM Client application. This function
     parses command-line arguments, updates the backend URL, creates a .env 
     template, and launches a Gradio interface.
-    Command-line Arguments:
-        --backend-url (str): URL of the backend server. Defaults to the global BACKEND_URL.
-        --host (str): Host address for the Gradio client. Defaults to "0.0.0.0".
-        --port (int): Port number to run the Gradio interface on. Defaults to 7860.
-        --share (bool): Flag to create a shareable link for the Gradio interface.
     """
     global BACKEND_URL  # Declare this before using BACKEND_URL anywhere
 
