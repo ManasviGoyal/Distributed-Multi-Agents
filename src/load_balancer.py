@@ -7,11 +7,24 @@ import hashlib
 app = FastAPI()
 
 # Define backend servers
-BACKENDS = ["http://172.31.34.248:8001", "http://172.31.34.248:8002", "http://172.31.34.248:8003"]
+BACKENDS = ["http://10.250.201.148:8001", "http://10.250.201.148:8002", "http://10.250.150.216:8003"]
 backend_cycle = itertools.cycle(BACKENDS)
 MAX_RETRIES = 3
 
 def consistent_hash(job_id):
+    """
+    Generates a consistent hash value for a given job ID.
+
+    This function uses the MD5 hashing algorithm to compute a hash
+    for the provided job ID string. The resulting hash is then
+    converted to an integer in base 16.
+
+    Args:
+        job_id (str): The unique identifier for the job to be hashed.
+
+    Returns:
+        int: A consistent integer hash value derived from the job ID.
+    """
     return int(hashlib.md5(job_id.encode()).hexdigest(), 16)
 
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
@@ -50,6 +63,8 @@ async def proxy(path: str, request: Request):
                 )
 
                 content_type = resp.headers.get("content-type", "application/octet-stream")
+                
+                print(f"{backend} joined successfully for '{path}'")
                 return Response(
                     content=resp.content,
                     status_code=resp.status_code,
@@ -60,4 +75,5 @@ async def proxy(path: str, request: Request):
             print(f"⚠️ Backend {backend} failed with error: {e}")
             continue  # try next backend
 
+    
     return Response(content="❌ All backends failed.", status_code=503)
