@@ -7,7 +7,7 @@ import hashlib
 app = FastAPI()
 
 # Define backend servers
-BACKENDS = ["http://localhost:8001", "http://localhost:8002", "http://localhost:8003"]
+BACKENDS = ["http://172.31.34.248:8001", "http://172.31.34.248:8002", "http://172.31.34.248:8003"]
 backend_cycle = itertools.cycle(BACKENDS)
 MAX_RETRIES = 3
 
