@@ -268,7 +268,6 @@ class DatabaseManager:
             
             cursor.execute("""
             SELECT i.job_id, i.query, i.domain, i.question_type, i.timestamp, i.roles, a.consensus_score
-                   a.consensus_score
             FROM interactions i
             LEFT JOIN analysis a ON i.job_id = a.job_id
             ORDER BY i.timestamp DESC

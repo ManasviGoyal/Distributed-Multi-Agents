@@ -1636,7 +1636,7 @@ async def process_query_background(job_id: str, query: str, question_type: str, 
         active_jobs[job_id]["progress"] = 30
 
         # Process the query
-        result = await response_aggregator.process_query(query, question_type)
+        result = await response_aggregator.process_query(query, question_type, ethical_views)
         
         # Update all agent heartbeats after processing
         for model_id in MODELS.keys():
