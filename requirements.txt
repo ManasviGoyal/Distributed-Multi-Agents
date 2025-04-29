@@ -11,6 +11,7 @@ torch>=2.2.2
 reportlab
 fastapi
 uvicorn
+sphinx_rtd_theme
 
 # NLP & Sentiment
 nltk

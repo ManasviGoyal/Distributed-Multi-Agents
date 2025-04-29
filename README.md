@@ -1,28 +1,36 @@
 # Distributed Multi-Agent LLM System
 
-This project aims to develop a distributed application framework that leverages multiple LLM agents to better understand LLM behavior, bias, and consensus. This system distributes queries across multiple language models and aggregates their responses using a consensus mechanism.
-
-## Main Features
-
-- **Multi-Agent Architecture**: Distributes queries to multiple LLM models in parallel
-- **Consensus Aggregation**: Synthesizes responses from different models to generate a more comprehensive answer
-- **Agent Health Monitoring**: Continuously tracks agent performance and availability
-- **Response Analysis**: We get insights into model agreement, sentiment analysis, and emotional tone
-- **Visualizations**: Includes heatmaps, emotion charts, polarity analysis, and radar comparisons
-- **User Management**: Authentication and history tracking for multiple users
-- **Domain Expertise**: Configurable domain prefixes to provide specialized context for queries
+This project implements a fault-tolerant distributed application framework that leverages multiple LLM agents to better understand model behavior, bias, consensus, and reliability. The system distributes queries across multiple language models, aggregates their responses using a consensus mechanism, and supports automatic failover and retry strategies for fault tolerance.
 
 ## Table of Contents
 
-- [Installation](#installation)
+- [Main Features](#main-features)
+- [Use Cases](#use-cases)
+- [Running the Application](#running-the-application)
 - [Architecture](#architecture)
 - [Configuration](#configuration)
-- [Running the Application](#running-the-application)
 - [User Interface](#user-interface)
 - [API Reference](#api-reference)
-- [Use Cases](#use-cases)
-- [Contributing](#contributing)
-- [License](#license)
+
+## Main Features
+
+- **Multi-Agent Architecture**: Distributes queries to multiple LLM models in parallel.
+- **Consensus Aggregation**: Synthesizes responses from different models to generate a more comprehensive answer.
+- **Agent Health Monitoring**: Continuously tracks agent performance and availability.
+- **Response Analysis**: We get insights into model agreement, sentiment analysis, and emotional tone.
+- **Visualizations**: Includes heatmaps, emotion charts, polarity analysis, and radar comparisons.
+- **User Management**: Authentication and history tracking for multiple users.
+- **Domain Expertise**: Configurable domain prefixes to provide specialized context for queries.
+- Ethical Role Assignment: Supports assigning ethical reasoning roles (Utilitarian, Libertarian, etc.) to models dynamically.
+
+## Use Cases
+
+The Distributed Multi-Agent LLM System is ideal for:
+
+- **Enhanced Decision-Making**: Combining multiple model perspectives to achieve more robust and informed conclusions.
+- **Bias**: Detecting training biases by contrasting how different models reason and respond.
+- **Policy and Ethics Analysis**: Examining complex policy or ethical dilemmas from multiple philosophical standpoints.
+- **Model Benchmarking**: Comparing model behavior side-by-side to analyze performance consistency and response diversity.
 
 ## Installation
 
@@ -35,8 +43,8 @@ This project aims to develop a distributed application framework that leverages 
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/manasvi-goyal/distributed-multi-agent-llm.git
-cd distributed-multi-agent-llm
+git clone https://github.com/ManasviGoyal/Distributed-Multi-Agents.git
+cd Distributed-Multi-Agents
 ```
 
 2. Install dependencies:
@@ -51,9 +59,53 @@ SITE_URL=http://localhost:7860
 SITE_NAME=Multi-Agent LLM System
 ```
 
+## Running the Application
+
+### Single Server
+
+1. Start the backend server:
+```bash
+python src/server.py --host 0.0.0.0 --port 8000
+```
+
+2. Start the client interface:
+```bash
+python src/client.py --backend-url http://localhost:8000 --host 0.0.0.0 --port 7860
+```
+
+3. Access the web interface at:
+```
+http://localhost:7860
+```
+
+### Multiple Servers with Load Balancer
+
+1. Start multiple backend servers (on different ports):
+```bash
+python src/server.py --host 0.0.0.0 --port 8001
+python src/server.py --host 0.0.0.0 --port 8002
+python src/server.py --host 0.0.0.0 --port 8003
+```
+
+2. Start the load balancer using Uvicorn:
+```
+uvicorn src.load_balancer:app --host 0.0.0.0 --port 8000
+```
+This starts the load balancer FastAPI server at `http://localhost:8000`, which routes traffic across the backends.
+
+3. Start the client interface pointing to the load balancer:
+```bash
+python src/client.py --backend-url http://localhost:8000 --host 0.0.0.0 --port 7860
+```
+
+4. Access the web interface at:
+```
+http://localhost:7860
+```
+
 ## Architecture
 
-The system consists of two main components:
+The system consists of four main components:
 
 ### Backend Server (`server.py`)
 
@@ -68,6 +120,13 @@ The system consists of two main components:
 - Displays model responses and analysis visualizations
 - Manages user sessions and interaction history
 - Communicates with the backend server via HTTP
+
+### Load Balancer (`load_balancer.py`)
+
+- Routes incoming client requests intelligently
+- Provides sticky routing for job-related queries (e.g., fetching images or results)
+- Uses round-robin dispatch with retries for new processing requests
+- Tolerates up to two backend server failures transparentl
 
 ### Database Management (`database_manager.py`)
 
@@ -90,7 +149,7 @@ MODELS = {
     "llama3": {
         "name": "meta-llama/llama-3.1-8b-instruct:free",
         "temperature": 0.3,
-        "aggregator": True,  # Marks llama3 as the aggregator model
+        "aggregator": True,  # Marks llama3 as the default aggregator model
     },
     # Add more models as needed
 }
@@ -109,20 +168,6 @@ DOMAINS = {
 }
 ```
 
-## Running the Application
-
-1. Start the backend server:
-```bash
-python -m src.server --host 0.0.0.0 --port 8000
-```
-
-2. Start the client interface:
-```bash
-python -m src.client --backend-url http://localhost:8000 --host 0.0.0.0 --port 7860
-```
-
-3. Access the web interface at `http://localhost:7860`
-
 ## User Interface
 
 The client provides a Gradio interface with multiple tabs:
@@ -132,6 +177,7 @@ The client provides a Gradio interface with multiple tabs:
 - Choose a question type
 - Input your query or select from examples
 - Select the aggregator model
+- Optionally assign ethical perspectives to agent models
 
 ### Model Responses
 - View the aggregator's consensus summary
@@ -141,7 +187,7 @@ The client provides a Gradio interface with multiple tabs:
 - Response similarity heatmap
 - Emotional tone analysis
 - Sentiment polarity comparison
-- Response feature radar chart
+- Radar chart comparing response features
 
 ### Interaction History
 - Browse previous queries and responses
@@ -158,15 +204,5 @@ The backend server exposes the following key endpoints:
 - `GET /models`: List available LLM models
 - `GET /domains`: List available domains
 - `GET /history`: Retrieve user interaction history
-
-## Use Cases
-
-The Distributed Multi-Agent LLM System is ideal for:
-
-- **Enhanced Decision-Making**: Getting more of a balanced perspectives on complex questions
-- **Bias**: Understand bias or restrictions made during pretraining in LLMs based on their outputs
-- **Policy Analysis**: Evaluate ethical implications from multiple perspectives
-
-## License
-
-This project is licensed under the BSD 3-Clause License - see the [LICENSE](LICENSE) file for details.
+- `DELETE /history/{job_id}`: Delete a specific interaction
+- `POST /update_aggregator`: Update the aggregator model dynamically
