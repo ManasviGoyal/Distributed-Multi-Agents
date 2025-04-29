@@ -358,7 +358,6 @@
             
             <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
 <span class="s2">            SELECT i.job_id, i.query, i.domain, i.question_type, i.timestamp, i.roles, a.consensus_score</span>
-<span class="s2">                   a.consensus_score</span>
 <span class="s2">            FROM interactions i</span>
 <span class="s2">            LEFT JOIN analysis a ON i.job_id = a.job_id</span>
 <span class="s2">            ORDER BY i.timestamp DESC</span>

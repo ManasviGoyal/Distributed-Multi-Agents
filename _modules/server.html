@@ -1766,7 +1766,7 @@
         <span class="n">active_jobs</span><span class="p">[</span><span class="n">job_id</span><span class="p">][</span><span class="s2">&quot;progress&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">30</span>
 
         <span class="c1"># Process the query</span>
-        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">response_aggregator</span><span class="o">.</span><span class="n">process_query</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">question_type</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">response_aggregator</span><span class="o">.</span><span class="n">process_query</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">question_type</span><span class="p">,</span> <span class="n">ethical_views</span><span class="p">)</span>
         
         <span class="c1"># Update all agent heartbeats after processing</span>
         <span class="k">for</span> <span class="n">model_id</span> <span class="ow">in</span> <span class="n">MODELS</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
