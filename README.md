@@ -21,7 +21,7 @@ This project implements a fault-tolerant distributed application framework that 
 - **Visualizations**: Includes heatmaps, emotion charts, polarity analysis, and radar comparisons.
 - **User Management**: Authentication and history tracking for multiple users.
 - **Domain Expertise**: Configurable domain prefixes to provide specialized context for queries.
-- Ethical Role Assignment: Supports assigning ethical reasoning roles (Utilitarian, Libertarian, etc.) to models dynamically.
+- **Ethical Role Assignment**: Supports assigning ethical reasoning roles (Utilitarian, Libertarian, etc.) to models dynamically.
 
 ## Use Cases
 
