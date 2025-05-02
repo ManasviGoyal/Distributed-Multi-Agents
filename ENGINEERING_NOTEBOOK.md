@@ -5,6 +5,10 @@ This engineering notebook documents the design, development, and progress of our
 The full source code is available [here](https://github.com/ManasviGoyal/Distributed-Multi-Agents).
 More details on the code structure and how to run the code can be found in the [`README.md`](https://github.com/ManasviGoyal/Distributed-Multi-Agents/blob/main/README.md). Also, the deployed documentation can be found [here](https://manasvigoyal.github.io/Distributed-Multi-Agents/).
 
+<p align="center">
+  <img src="imgs/poster.png">
+</p>
+
 The following notebook sections document the motivation, technical architecture, implementation choices, and development timeline for this project.
 
 ## Table of Contents
