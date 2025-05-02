@@ -14,8 +14,9 @@ The following notebook sections document the motivation, technical architecture,
 3. [Architecture](#architecture)
 4. [Multi-Agent Collaboration and Aggregation Mechanism](#multi-agent-collaboration-and-aggregation-mechanism)
 5. [How a Query Flows Through the System](#how-a-query-flows-through-the-system)
-6. [Design Decisions](#design-decisions)
-7. [Day to Day Progress](#day-to-day-progress)
+6. [Analysis and Results of Model Responses](#analysis-and-results-of-model-responses)
+7. [Design Decisions](#design-decisions)
+8. [Day to Day Progress](#day-to-day-progress)
 
 ## Need and Motivation
 
@@ -107,6 +108,7 @@ Our system relies on multiple agent models to independently reason over user que
 - Synthesizes a consensus answer from the agents’ outputs.
 - Computes a consensus score reflecting alignment or disagreement among agents.
 - Performs textual analysis (e.g., sentiment, emotional tone, polarity) to characterize the overall response landscape.
+- When a clear consensus cannot be established, the aggregator contributes its own reasoning as a tie-breaker to generate a more decisive output.
 
 **Fallback:** If the user-selected aggregator model is unhealthy, the system automatically switches to a backup aggregator.
 
@@ -184,6 +186,48 @@ All elements are presented interactively in the Gradio GUI, enabling users to sc
 <p align="center">
   <img src="imgs/history.png">
 </p>
+
+## Analysis and Results of Model Responses
+
+The system successfully coordinated multiple LLM agents to respond independently to a variety of prompts across domains such as education, healthcare, policy, and ethics. Below are key observations based on the outputs and analysis visualizations.
+
+### 1. Diversity in Reasoning
+
+Different models often provided varied interpretations, especially for open-ended or multiple choice questions. This demonstrated the value of multi-agent querying: even when answers overlapped in content, the tone, structure, and emphasis often diverged. Some models showed cautious phrasing while others took more assertive stances.
+
+### 2. Consensus Aggregation
+
+The aggregator consistently generated coherent summaries that balanced the most relevant or commonly agreed-upon points. In cases of strong agreement among agents, the consensus output closely resembled the individual responses. When agents diverged significantly, the aggregator flagged the disagreement through lower consensus scores and qualified language (e.g., "While some models suggest..."). In cases where no clear consensus emerged, the aggregator contributed its own reasoning as a tie-breaker, ensuring that a definitive and thoughtful response was still produced.
+
+### 3. Impact of Domain Context and Question Type
+
+The use of structured question types and domain-specific prefixes helped improve both the quality and relevance of model responses.
+
+- **Domain Prefixes** provided contextual framing that nudged models to respond from the perspective of a subject-matter expert. For instance, selecting the *Healthcare* domain added a prefix such as *"As a health policy expert,"* which resulted in more focused, jargon-aware, and practically grounded outputs.
+
+- **Question Types** shaped how models interpreted the prompt:
+  - *Open-ended*: Encouraged broad, reflective reasoning using ethical or strategic framing.
+  - *Yes/No*: Prompted binary answers followed by moral, emotional, and practical justification.
+  - *Multiple Choice*: Presented a scenario with three options (A, B, or C), requiring the model to select one and analyze the pros and cons of each.
+
+These configurations helped reduce hallucinations, improved response relevance, and gave users finer control over how prompts were interpreted and answered. This also allowed for more targeted comparisons when analyzing model agreement and divergence.
+
+### 4. Ethical Role Effects
+
+When ethical roles were assigned, agent responses clearly reflected their respective philosophical viewpoints. This allowed for diverse perspectives on the same prompt and highlighted the interpretive flexibility of LLMs.
+
+- *Utilitarian*: Focused on maximizing collective well-being and minimizing harm.
+- *Deontologist*: Emphasized adherence to moral duties and rules regardless of consequences.
+- *Virtue Ethicist*: Grounded reasoning in character traits such as honesty, compassion, and integrity.
+- *Libertarian*: Prioritized personal freedom, autonomy, and voluntary consent.
+- *Rawlsian*: Framed responses around justice, fairness, and protecting the least advantaged.
+- *Precautionary*: Took a conservative stance, emphasizing the avoidance of irreversible harm or catastrophic risks.
+
+This enabled the system to simulate multi-ethical reasoning on demand and gave users the ability to explore questions through multiple normative lenses in a single query.
+
+### 5. Visual Analysis Insights
+
+The similarity heatmaps revealed patterns of strong alignment (high cosine similarity) in fact-based questions, and weaker alignment in abstract or moral questions. Sentiment and tone charts helped quantify stylistic differences among agents. Radar plots highlighted which models consistently generated more assertive, neutral, or emotionally expressive responses.
 
 ## Design Decisions
 
