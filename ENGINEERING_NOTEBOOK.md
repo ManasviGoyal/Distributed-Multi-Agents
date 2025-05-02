@@ -3,24 +3,19 @@
 This engineering notebook documents the design, development, and progress of our Distributed Multi-Agent LLM System. The project explores how multiple lightweight language models can be orchestrated in parallel to improve response reliability, ethical coverage, and system resilience. By combining a modular architecture with fault-tolerant mechanisms, we aimed to overcome the limitations of single-model systems—such as inconsistency, fragility, and narrow ethical reasoning.
 
 The full source code is available [here](https://github.com/ManasviGoyal/Distributed-Multi-Agents).
-More details on the code structure and how to run the code can be found in the [`README.md`](https://github.com/ManasviGoyal/Distributed-Multi-Agents/blob/main/README.md). Also, the deployed documentation can be found [here](https://manasvigoyal.github.io/Distributed-Multi-Agents/).
-
-<p align="center">
-  <img src="imgs/poster.png">
-</p>
+More details on the code structure and how to run the code can be found in the [`README.md`](https://github.com/ManasviGoyal/Distributed-Multi-Agents/blob/main/README.md). Also, the deployed documentation can be found [here](https://manasvigoyal.github.io/Distributed-Multi-Agents/). The post presented at the SEAS design fail can be found [here](https://github.com/ManasviGoyal/Distributed-Multi-Agents/blob/main/poster.pdf).
 
 The following notebook sections document the motivation, technical architecture, implementation choices, and development timeline for this project.
 
 ## Table of Contents
 
 1. [Need and Motivation](#need-and-motivation)
-2. [Key Features](#key-features)
-3. [Architecture](#architecture)
-4. [Multi-Agent Collaboration and Aggregation Mechanism](#multi-agent-collaboration-and-aggregation-mechanism)
-5. [How a Query Flows Through the System](#how-a-query-flows-through-the-system)
-6. [Analysis and Results of Model Responses](#analysis-and-results-of-model-responses)
-7. [Design Decisions](#design-decisions)
-8. [Day to Day Progress](#day-to-day-progress)
+2. [Architecture](#architecture)
+3. [Multi-Agent Collaboration and Aggregation Mechanism](#multi-agent-collaboration-and-aggregation-mechanism)
+4. [How a Query Flows Through the System](#how-a-query-flows-through-the-system)
+5. [Analysis and Results of Model Responses](#analysis-and-results-of-model-responses)
+6. [Design Decisions](#design-decisions)
+7. [Day to Day Progress](#day-to-day-progress)
 
 ## Need and Motivation
 
@@ -29,16 +24,6 @@ Large Language Models (LLMs) have demonstrated impressive capabilities across a 
 To address these challenges, we designed and built a distributed multi-agent system in which multiple LLMs reason independently on the same prompt, and an aggregator model synthesizes a consensus response. This setup improves reliability by introducing redundancy, ensures fault tolerance through dynamic failover mechanisms, and enhances ethical diversity by allowing each model to adopt different normative perspectives. The system also significantly reduces API costs and latency through local caching and persistence.
 
 The motivation behind implementing this multi-agent system with a distributed architecture was to enable parallelism, modular scalability, and resilience. Separating the client, load balancer, backend servers, and model agents into independent components allowed us to isolate failures, deploy updates without downtime, and dynamically balance load across agents. This way we can split incoming workload across many agents to process requests in parallel and add or remove agents on the fly without interrupting service. If one component needs maintenance or encounters an error, the others keep running, so the overall system stays responsive. At the same time, our central database collects every request and response in one place, making it easy to review past decisions, spot bottlenecks, and debug issues. Over time, this approach would give us a system that remains fast under heavy load, can evolve through incremental updates, and whose internal reasoning trails are always available for inspection.
-
-## Key Features
-
-- **Multi-Model Querying**: Distributes queries to multiple LLM models
-- **Consensus Aggregation**: Synthesizes responses to produce a comprehensive answer
-- **Agent Health Monitoring**: Tracks model availability and performance
-- **Response Analysis**: Provides visualization and metrics for model agreement
-- **User Management**: Authentication and history tracking
-- **Domain Expertise**: Adds domain-specific context to queries
-- **Ethical Role Assignment**: Supports assigning ethical reasoning roles (Utilitarian, Libertarian, etc.) to models dynamically.
 
 ## Architecture
 
@@ -203,9 +188,7 @@ Different models often provided varied interpretations, especially for open-ende
 
 The aggregator consistently generated coherent summaries that balanced the most relevant or commonly agreed-upon points. In cases of strong agreement among agents, the consensus output closely resembled the individual responses. When agents diverged significantly, the aggregator flagged the disagreement through lower consensus scores and qualified language (e.g., "While some models suggest..."). In cases where no clear consensus emerged, the aggregator contributed its own reasoning as a tie-breaker, ensuring that a definitive and thoughtful response was still produced.
 
-### 3. Impact of Domain Context and Question Type
-
-The use of structured question types and domain-specific prefixes helped improve both the quality and relevance of model responses.
+### 3. Impact of Domain Context, Question Type and Ethical Roles
 
 - **Domain Prefixes** provided contextual framing that nudged models to respond from the perspective of a subject-matter expert. For instance, selecting the *Healthcare* domain added a prefix such as *"As a health policy expert,"* which resulted in more focused, jargon-aware, and practically grounded outputs.
 
@@ -214,24 +197,9 @@ The use of structured question types and domain-specific prefixes helped improve
   - *Yes/No*: Prompted binary answers followed by moral, emotional, and practical justification.
   - *Multiple Choice*: Presented a scenario with three options (A, B, or C), requiring the model to select one and analyze the pros and cons of each.
 
+- **Ethical Role** assignment was applied so that agent responses clearly reflected their respective philosophical viewpoints. This allowed for diverse perspectives on the same prompt and highlighted the interpretive flexibility of LLMs.
+
 These configurations helped reduce hallucinations, improved response relevance, and gave users finer control over how prompts were interpreted and answered. This also allowed for more targeted comparisons when analyzing model agreement and divergence.
-
-### 4. Ethical Role Effects
-
-When ethical roles were assigned, agent responses clearly reflected their respective philosophical viewpoints. This allowed for diverse perspectives on the same prompt and highlighted the interpretive flexibility of LLMs.
-
-- *Utilitarian*: Focused on maximizing collective well-being and minimizing harm.
-- *Deontologist*: Emphasized adherence to moral duties and rules regardless of consequences.
-- *Virtue Ethicist*: Grounded reasoning in character traits such as honesty, compassion, and integrity.
-- *Libertarian*: Prioritized personal freedom, autonomy, and voluntary consent.
-- *Rawlsian*: Framed responses around justice, fairness, and protecting the least advantaged.
-- *Precautionary*: Took a conservative stance, emphasizing the avoidance of irreversible harm or catastrophic risks.
-
-This enabled the system to simulate multi-ethical reasoning on demand and gave users the ability to explore questions through multiple normative lenses in a single query.
-
-### 5. Visual Analysis Insights
-
-The similarity heatmaps revealed patterns of strong alignment (high cosine similarity) in fact-based questions, and weaker alignment in abstract or moral questions. Sentiment and tone charts helped quantify stylistic differences among agents. Radar plots highlighted which models consistently generated more assertive, neutral, or emotionally expressive responses.
 
 ## Design Decisions
 
@@ -342,32 +310,9 @@ We focused on enhancing visualization and enabling users to select different agg
     - Enabled model selection as the aggregator responsible for consensus.
     - Improved UI readability with clearer formatting.
 
-
 ### April 16, 2025
 
 We added domain-specific expertise by allowing users to query different domains like Education, Policy, and Healthcare. We also improved visual rendering and query examples.
-
-The following are some of the plots that we generated with out updated analysis code for the following query
-
-<p align="center">
-  <img src="imgs/prompt.png">
-</p>
-
-<p align="center">
-  <img src="imgs/response_similarity.png">
-</p>
-
-<p align="center">
-  <img src="imgs/emotional_tone.png" width="500">
-</p>
-
-<p align="center">
-  <img src="imgs/sentiment_polarity.png" width="500">
-</p>
-
-<p align="center">
-  <img src="imgs/response_feature.png" width="500">
-</p>
 
 #### Work Completed
 
@@ -377,7 +322,6 @@ The following are some of the plots that we generated with out updated analysis 
 - Formatting & Rendering
     - Enhanced response chart rendering.
     - Fixed image handling issues to display consistent visual feedback.
-
 
 ### April 18, 2025
 
