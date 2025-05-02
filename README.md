@@ -11,6 +11,7 @@ This project implements a fault-tolerant distributed application framework that 
 - [Configuration](#configuration)
 - [User Interface](#user-interface)
 - [API Reference](#api-reference)
+- [Testing and Documentation](#testing-and-documentation)
 
 ## Main Features
 
@@ -206,3 +207,23 @@ The backend server exposes the following key endpoints:
 - `GET /history`: Retrieve user interaction history
 - `DELETE /history/{job_id}`: Delete a specific interaction
 - `POST /update_aggregator`: Update the aggregator model dynamically
+
+## Testing and Documentation
+This project is thoroughly tested and documented. 
+
+We use `pytest` for unit testing across the server, client, database manager, and load balancer components. Run the tests from project root:
+
+```
+PYTHONPATH=src pytest tests/ --cov=src --cov-config=.coveragerc
+```
+
+All classes and methods are documented with Google-style docstrings for consistency and clarity. The complete developer and API documentation is available via Sphinx and rendered using the Read the Docs theme. 
+
+The HTML documentation can be rebuilt locally as:
+
+```bash
+cd docs
+make html   # or on Windows: .\make.bat html
+```
+
+The generated docs can be found at the deployed at [GitHub Actions](https://manasvigoyal.github.io/Distributed-Multi-Agents/).
