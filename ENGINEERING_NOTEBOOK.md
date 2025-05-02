@@ -1,6 +1,6 @@
 # Engineering Notebook: Distributed Multi-Agent LLM System
 
-This engineering notebook documents the design, development, and progress of our Distributed Multi-Agent LLM System. The project explores how multiple lightweight language models can be orchestrated in parallel to improve response reliability, ethical coverage, and system resilience. By combining a modular architecture with fault-tolerant mechanisms, we aimed to overcome the limitations of single-model systems—such as inconsistency, fragility, and narrow ethical reasoning.
+This engineering notebook documents the design, development, and progress of our Distributed Multi-Agent LLM System. The project explores how multiple lightweight language models can be orchestrated in parallel to improve response reliability, ethical coverage, and system resilience.
 
 The full source code is available [here](https://github.com/ManasviGoyal/Distributed-Multi-Agents).
 More details on the code structure and how to run the code can be found in the [`README.md`](https://github.com/ManasviGoyal/Distributed-Multi-Agents/blob/main/README.md). Also, the deployed documentation can be found [here](https://manasvigoyal.github.io/Distributed-Multi-Agents/). The post presented at the SEAS design fail can be found [here](https://github.com/ManasviGoyal/Distributed-Multi-Agents/blob/main/poster.pdf).
@@ -27,17 +27,7 @@ The motivation behind implementing this multi-agent system with a distributed ar
 
 ## Architecture
 
-The system architecture consists of multiple independently deployed agents for independent reasoning, a central aggregator to synthesize and summarize those individual responses into a coherent consensus, a load-balancer that implements sticky routing for job-specific endpoints (status/result/image) and a round-robin strategy with retry logic for 2-fault tolerance, and a persistent SQLite database to record every interaction, agent response, consensus analysis and user authentication. These components communicate through well-defined APIs and are coordinated to deliver high-availability, low-latency query handling. The system follows a client-server architecture and its components are introduced below:
-
-1. **Backend Server** (`server.py`): Manages LLM agents, handles query processing, performs response aggregation and analysis, and provides REST API endpoints.
-
-2. **Client Application** (`client.py`): Offers a Gradio-based user interface for submitting queries, viewing responses, and analyzing results. Talks to backend via REST APIs.
-
-3. **Database Manager** (`database_manager.py`): SQLite database for handling data persistence, user authentication, and interaction history.
-
-4. **Load Balancer** (`load_balancer.py`): Smart proxy using round-robin and sticky job-based routing. Provides 2-fault tolerance (tries up to 3 servers if a backend fails).
-
-Each of these components plays a distinct role in maintaining the system’s modularity, fault tolerance, and performance. The following sections provide a deeper look into the internal structure and behavior of these components.
+The system architecture consists of multiple independently deployed agents for independent reasoning, a central aggregator to synthesize and summarize those individual responses into a coherent consensus, a load-balancer that implements sticky routing for job-specific endpoints (status/result/image) and a round-robin strategy with retry logic for 2-fault tolerance, and a persistent SQLite database to record every interaction, agent response, consensus analysis and user authentication. These components communicate through well-defined APIs and are coordinated to deliver high-availability, low-latency query handling. The following sections provide a deeper look into the internal structure and behavior of these components.
 
 ### Database Schema and Persistence
 
@@ -355,16 +345,6 @@ LLM fault tolerance was added, with health checks, heartbeat pings, and automati
 ### April 21, 2025
 
 We added secure user authentication and finalized documentation. Passwords are hashed securely, and sessions are managed to preserve query history.
-
-This is what our Gradio interface looks like after incorporating the new account-related features:
-
-<p align="center">
-  <img src="imgs/gui_top.png">
-</p>
-
-<p align="center">
-  <img src="imgs/gui_bottom.png">
-</p>
 
 #### Work Completed
 
