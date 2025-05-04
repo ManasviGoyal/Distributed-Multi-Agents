@@ -190,6 +190,12 @@ The aggregator consistently generated coherent summaries that balanced the most 
 
 These configurations helped reduce hallucinations, improved response relevance, and gave users finer control over how prompts were interpreted and answered. This also allowed for more targeted comparisons when analyzing model agreement and divergence.
 
+## Demo
+
+![demo-gif-video](imgs/demo.gif)
+
+The demo GIF above showcases real-time interaction with our distributed multi-LLM system, including model responses, consensus visualization, and persistence across multiple agents.
+
 ## Design Decisions
 
 As we built the system, we made several important design choices to keep it reliable, easy to scale, and simple to use. We focused on keeping the parts of the system separate, making it efficient, and ensuring it could handle problems without breaking The key decisions and the reasoning behind them are outlined below:
