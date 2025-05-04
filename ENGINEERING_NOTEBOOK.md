@@ -424,5 +424,4 @@ We completed the first round of unit tests and achieved full baseline coverage a
 
 - Testing Completion
   - Finalized test scripts for backend, database manager, and load balancer.
-  - Achieved **84%** test coverage.
   - Validated all tests using `pytest` and ensured CI compatibility.
