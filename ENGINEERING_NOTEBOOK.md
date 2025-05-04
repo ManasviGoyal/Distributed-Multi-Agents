@@ -192,7 +192,11 @@ These configurations helped reduce hallucinations, improved response relevance, 
 
 ## Demo
 
-![demo-gif-video](imgs/demo.gif)
+<!-- ![demo-gif-video](imgs/demo.gif) -->
+
+<video align="center" controls>
+  <source src="imgs/demo.mov" type="video/mp4">
+</video>
 
 The demo GIF above showcases real-time interaction with our distributed multi-LLM system, including model responses, consensus visualization, and persistence across multiple agents.
 
