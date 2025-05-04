@@ -15,7 +15,8 @@ The following notebook sections document the motivation, technical architecture,
 4. [How a Query Flows Through the System](#how-a-query-flows-through-the-system)
 5. [Analysis and Results of Model Responses](#analysis-and-results-of-model-responses)
 6. [Design Decisions](#design-decisions)
-7. [Day to Day Progress](#day-to-day-progress)
+7. [What We Learnt](#what-we-learnt) 
+8. [Day to Day Progress](#day-to-day-progress)
 
 ## Need and Motivation
 
@@ -168,15 +169,15 @@ All elements are presented interactively in the Gradio GUI, enabling users to sc
 
 The system successfully coordinated multiple LLM agents to respond independently to a variety of prompts across domains such as education, healthcare, policy, and ethics. Below are key observations based on the outputs and analysis visualizations.
 
-### 1. Diversity in Reasoning
+#### 1. Diversity in Reasoning
 
 Different models often provided varied interpretations, especially for open-ended or multiple choice questions. This demonstrated the value of multi-agent querying: even when answers overlapped in content, the tone, structure, and emphasis often diverged. Some models showed cautious phrasing while others took more assertive stances.
 
-### 2. Consensus Aggregation
+#### 2. Consensus Aggregation
 
 The aggregator consistently generated coherent summaries that balanced the most relevant or commonly agreed-upon points. In cases of strong agreement among agents, the consensus output closely resembled the individual responses. When agents diverged significantly, the aggregator flagged the disagreement through lower consensus scores and qualified language (e.g., "While some models suggest..."). In cases where no clear consensus emerged, the aggregator contributed its own reasoning as a tie-breaker, ensuring that a definitive and thoughtful response was still produced.
 
-### 3. Impact of Domain Context, Question Type and Ethical Roles
+#### 3. Impact of Domain Context, Question Type and Ethical Roles
 
 - **Domain Prefixes** provided contextual framing that nudged models to respond from the perspective of a subject-matter expert. For instance, selecting the *Healthcare* domain added a prefix such as *"As a health policy expert,"* which resulted in more focused, jargon-aware, and practically grounded outputs.
 
@@ -193,49 +194,30 @@ These configurations helped reduce hallucinations, improved response relevance, 
 
 As we built the system, we made several important design choices to keep it reliable, easy to scale, and simple to use. We focused on keeping the parts of the system separate, making it efficient, and ensuring it could handle problems without breaking The key decisions and the reasoning behind them are outlined below:
 
-### 1. Layered Modular Architecture
+1. **Load Balancer with Fault Tolerance**: To balance requests efficiently across backend servers, we designed a custom load balancer with both round-robin distribution and sticky routing based on job IDs. We also built in 2-fault tolerance so that if a server failed, the load balancer would automatically retry on alternate servers without interrupting the user experience.
 
-We chose to separate the system into distinct layers - Client Application, Load Balancer, Backend Servers, LLM Models, and Database, to make the system modular and maintainable. This allowed us to independently scale or upgrade each component without affecting the others, enabling future flexibility and smoother system evolution.
+2. **Distributed Backend Servers**: We architected the backend to consist of multiple independent FastAPI servers. Each server was designed to handle model interactions, response aggregation, and analysis generation. This distributed approach ensured that the system could scale horizontally as user load increased, and that failures in one server would not affect others.
 
-### 2. Gradio-Based Client Application
+3. **Multi-Agent Query Processing**: Rather than relying on a single model, we intentionally designed the system to collect responses from multiple LLM agents. By involving models like Llama, Qwen, Mistral, and DeepHermes for every query, we ensured diversity in reasoning. We believed this would lead to richer consensus building and greater overall robustness in the final outputs.
 
-For the client interface, we intentionally built the application using Gradio because it offered a lightweight, web-based solution that was quick to develop yet highly interactive. Gradio allowed us to implement login functionality, query submission, history management, and visualization features seamlessly in a single consistent interface.
+4. **Dynamic Aggregator Failover**: Understanding that the aggregator model is critical for consensus generation, we implemented a dynamic failover system. If the aggregator became unhealthy, we automatically selected a backup model. This decision was crucial to ensuring that system reliability did not hinge on a single point of failure.
 
-### 3. Load Balancer with Fault Tolerance
+5. **Heartbeat-Based Health Monitoring**: We introduced a heartbeat tracker where each agent sends a signal every 10 seconds. By monitoring heartbeats and API errors, we could detect unhealthy agents early and either reset them or select backups. This  allowed the system to maintain operational integrity without requiring manual supervision.
 
-To balance requests efficiently across backend servers, we designed a custom load balancer with both round-robin distribution and sticky routing based on job IDs. We also built in 2-fault tolerance so that if a server failed, the load balancer would automatically retry on alternate servers without interrupting the user experience.
+6. **Persistence and Caching Strategy**: From early on, we prioritized persistence. We designed the system to cache queries, model responses, and analysis results locally in an SQLite database. This allowed users to revisit prior queries without needing to re-call external APIs, which greatly reduced latency, saved API costs, and enhanced user experience.
 
-### 4. Distributed Backend Servers
+7. **Emphasis on Fault Tolerance and Resilience**: We added retry mechanisms in the load balancer, heartbeat-based health monitoring, aggregator failover logic, and database caching. Each of these elements ensured that even under partial system failures, users would experience uninterrupted service.
 
-We architected the backend to consist of multiple independent FastAPI servers. Each server was designed to handle model interactions, response aggregation, and analysis generation. This distributed approach ensured that the system could scale horizontally as user load increased, and that failures in one server would not affect others.
+## What We Learnt
+Working on the Distributed Multi-Agent LLM System provided us with deep insights into the practical challenges and design considerations involved in building a scalable, fault-tolerant AI application. Our key takeaways are as follows:
 
-### 5. Multi-Agent Query Processing
+1. **Model orchestration is more complex than just parallel calls**: Initially, we expected that running multiple lightweight models in parallel would be straightforward. However, coordinating asynchronous calls, managing timeouts, and implementing failover logic required thoughtful engineering. We learned to handle real-world unpredictability: models sometimes failed silently, returned invalid outputs, or took longer than expected—issues that don’t show up in idealized test environments.
 
-Rather than relying on a single model, we intentionally designed the system to collect responses from multiple LLM agents. By involving models like Llama, Qwen, Mistral, and DeepHermes for every query, we ensured diversity in reasoning. We believed this would lead to richer consensus building and greater overall robustness in the final outputs.
+2. **Performance and memory efficiency matter at small scale too**: Even with lightweight models, load times and memory consumption became a concern—especially on local machines. We encountered significant delays when running certain math-based models, prompting us to pivot toward more robust, low-latency natural language models via API. This highlighted the importance of profiling and optimizing at every layer, even when system scale seems small.
 
-### 6. Dynamic Aggregator Failover
+3. **Fault tolerance must be proactive, not reactive**: Our early prototypes lacked resilience that is any single agent failure could disrupt the entire pipeline. Through implementing heartbeats, health checks, and aggregator fallback, we learned the value of proactive fault detection and automatic recovery. These features made our system more robust and user-friendly, even under partial failures.
 
-Understanding that the aggregator model is critical for consensus generation, we implemented a dynamic failover system. If the aggregator became unhealthy, we automatically selected a backup model. This decision was crucial to ensuring that system reliability did not hinge on a single point of failure.
-
-### 7. Heartbeat-Based Health Monitoring
-
-We introduced a heartbeat tracker where each agent sends a signal every 10 seconds. By monitoring heartbeats and API errors, we could detect unhealthy agents early and either reset them or select backups. This  allowed the system to maintain operational integrity without requiring manual supervision.
-
-### 8. Persistence and Caching Strategy
-
-From early on, we prioritized persistence. We designed the system to cache queries, model responses, and analysis results locally in an SQLite database. This allowed users to revisit prior queries without needing to re-call external APIs, which greatly reduced latency, saved API costs, and enhanced user experience.
-
-### 9. Visualization of Analysis Results
-
-We decided to generate visualizations, including heatmaps, sentiment polarity charts, emotional tone distributions, and radar plots. These were integrated into the client to allow users not only to read responses but also to interpret underlying model behavior visually.
-
-### 10. Emphasis on Fault Tolerance and Resilience
-
-We added retry mechanisms in the load balancer, heartbeat-based health monitoring, aggregator failover logic, and database caching. Each of these elements ensured that even under partial system failures, users would experience uninterrupted service.
-
-### 11. API-Driven Stateless Communication
-
-We structured communication between the client, load balancer, and backend servers using clean REST APIs. By keeping each transaction stateless, we made the system easier to scale horizontally and deploy across distributed infrastructures in the future if needed.
+4. **Persistence enhances usability and reduces cost**: Integrating a persistent database not only improved user experience (by allowing history and session continuity), but also reduced reliance on costly external APIs. This taught us the practical benefit of caching and data reuse in systems that interact with LLMs—especially as models grow larger and inference costs increase.
 
 ## Day to Day Progress
 
@@ -252,7 +234,9 @@ We initiated development of the multi-agent consensus system for analyzing respo
     - Installed key dependencies and libraries.
     - Started to establish the framework for leader-follower interaction with the LLM models and model aggregation.
 
-- At this point in our project, rather than evaluating consensus and bias in LLMs, we were planning on trying to create a similar application but for aggregating responses for solving math problems. The idea was that since lightweight LLM models are bad at solving math problems, if we aggregate and put together multiple model responses, we may be more likely to get to the right answer with a consensus mechanism. What we ended up finding was that the math models were still performing pretty poorly and so we needed to re-evaluate our project approach.
+- At this point in our project, rather than evaluating consensus and bias in LLMs, we were planning on trying to create a similar application but for aggregating responses for solving math problems. The idea was that since lightweight LLM models are bad at solving math problems, if we aggregate and put together multiple model responses, we may be more likely to get to the right answer with a consensus mechanism. 
+- What we ultimately found was that the mathematical models continued to perform poorly, largely due to their relatively small parameter count, which limited their ability to capture the underlying complexity of the task. The models also incurred long load times, making them unsuitable for real-time deployment in user-facing applications. We explored using external APIs to reduce inference times, but found no freely available API access for math-specific models.
+- These challenges prompted a necessary re-evaluation of our project direction. We decided to shift to our current idea, as it was easier to find well-supported models for natural language tasks, and we believed ethical reasoning presented a compelling and impactful use case.
 
 ### April 7, 2025
 
